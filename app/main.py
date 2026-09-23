@@ -4,6 +4,7 @@ from fastapi.responses import RedirectResponse
 from app.database import SessionLocal
 from app.models import Habit, DailyCheckin
 from datetime import date
+from app.rollover import run_daily_rollover
 
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
@@ -74,3 +75,8 @@ async def save_checklist(request: Request):
     db.commit()
     db.close()
     return RedirectResponse(url="/", status_code=303)
+
+@app.get("/test-rollover")
+def test_rollover():
+    run_daily_rollover()
+    return {"status": "rollover ran"}

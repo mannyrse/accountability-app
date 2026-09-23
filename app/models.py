@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, Text, Boolean, Date, ForeignKey
+from sqlalchemy import Column, Integer, Text, Boolean, Date, DateTime, ForeignKey
 from app.database import Base
+from datetime import datetime, timezone
 
 class Habit(Base):
     __tablename__ = "habits"
@@ -18,3 +19,19 @@ class DailyCheckin(Base):
     habit_id = Column(Integer, ForeignKey("habits.id"), nullable=False)
     date = Column(Date, nullable=False)
     completed = Column(Boolean, nullable=False, default=False)
+
+class Points(Base):
+    __tablename__ = "points"
+
+    id = Column(Integer, primary_key=True)
+    current_points = Column(Integer, nullable=False, default=0)
+    lifetime_points = Column(Integer, nullable=False, default=0)
+
+class PointTransaction(Base):
+    __tablename__ = "point_transactions"
+
+    id = Column(Integer, primary_key=True)
+    amount = Column(Integer, nullable=False)
+    type = Column(Text, nullable=False)
+    reason = Column(Text, nullable=False)
+created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
