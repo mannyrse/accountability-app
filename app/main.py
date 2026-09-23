@@ -5,6 +5,7 @@ from app.database import SessionLocal
 from app.models import Habit, DailyCheckin
 from datetime import date
 from app.rollover import run_daily_rollover
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
@@ -80,3 +81,7 @@ async def save_checklist(request: Request):
 def test_rollover():
     run_daily_rollover()
     return {"status": "rollover ran"}
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(run_daily_rollover,"cron", hour=23, minute=59)
+scheduler.start()
