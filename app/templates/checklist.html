@@ -10,35 +10,74 @@
 <body>
     <h1>Today's Checklist</h1>
 
-    <form method="post" action="/save-checklist">
-        <p><a href="/add-habit">+ Add a habit</a></p>
-
-        <h2>Good Habits</h2>
-        {% for item in checklist %}
-        {% if item.habit.type == "good" %}
-        <label>
-            <input type="checkbox" name="habit_{{ item.habit.id }}" {% if item.checked %}checked{% endif %}>
-            {{ item.habit.name }}
-        </label>
-        <a href="/edit-habit/{{ item.habit.id }}">Edit</a>
-        <a href="/delete-habit/{{ item.habit.id }}">Delete</a><br>
-        {% endif %}
-        {% endfor %}
-
-        <h2>Bad Habits</h2>
-        {% for item in checklist %}
-        {% if item.habit.type == "bad" %}
-        <label>
-            <input type="checkbox" name="habit_{{ item.habit.id }}" {% if item.checked %}checked{% endif %}>
-            {{ item.habit.name }}
-        </label>
-        <a href="/edit-habit/{{ item.habit.id }}">Edit</a>
-        <a href="/delete-habit/{{ item.habit.id }}">Delete</a><br>
-        {% endif %}
-        {% endfor %}
-
-        <button type="submit">Save Today's Results</button>
+    {% if editing_habit %}
+    <h2>Editing: {{ editing_habit.name }}</h2>
+    <form method="post" action="/edit-habit/{{ editing_habit.id }}">
+        <input type="text" name="name" value="{{ editing_habit.name }}" required>
+        <select name="type">
+            <option value="good" {% if editing_habit.type=="good" %}selected{% endif %}>Good</option>
+            <option value="bad" {% if editing_habit.type=="bad" %}selected{% endif %}>Bad</option>
+        </select>
+        <input type="number" name="point_value" value="{{ editing_habit.point_value }}">
+        <button type="submit">Save Changes</button>
     </form>
+    <p><a href="/">Cancel</a></p>
+    {% endif %}
+
+    <!-- Empty form declared here. Nothing is nested inside it.
+     Checkboxes and the submit button elsewhere on the page
+     reference it by id via the form="checklist-form" attribute. -->
+    <form id="checklist-form" method="post" action="/save-checklist"></form>
+
+    <h2>Good Habits <a href="/?add_type=good">[+]</a></h2>
+
+    {% if add_type == "good" %}
+    <form method="post" action="/add-habit">
+        <input type="hidden" name="type" value="good">
+        <input type="text" name="name" placeholder="Habit name" required autofocus>
+        <input type="number" name="point_value" value="1">
+        <button type="submit">Add</button>
+    </form>
+    <p><a href="/">Cancel</a></p>
+    {% endif %}
+
+    {% for item in checklist %}
+    {% if item.habit.type == "good" %}
+    <label>
+        <input type="checkbox" form="checklist-form" name="habit_{{ item.habit.id }}" {% if item.checked %}checked{%
+            endif %}>
+        {{ item.habit.name }}
+    </label>
+    <a href="/?edit_id={{ item.habit.id }}">Edit</a>
+    <a href="/delete-habit/{{ item.habit.id }}">Delete</a><br>
+    {% endif %}
+    {% endfor %}
+
+    <h2>Bad Habits <a href="/?add_type=bad">[+]</a></h2>
+
+    {% if add_type == "bad" %}
+    <form method="post" action="/add-habit">
+        <input type="hidden" name="type" value="bad">
+        <input type="text" name="name" placeholder="Habit name" required autofocus>
+        <input type="number" name="point_value" value="1">
+        <button type="submit">Add</button>
+    </form>
+    <p><a href="/">Cancel</a></p>
+    {% endif %}
+
+    {% for item in checklist %}
+    {% if item.habit.type == "bad" %}
+    <label>
+        <input type="checkbox" form="checklist-form" name="habit_{{ item.habit.id }}" {% if item.checked %}checked{%
+            endif %}>
+        {{ item.habit.name }}
+    </label>
+    <a href="/?edit_id={{ item.habit.id }}">Edit</a>
+    <a href="/delete-habit/{{ item.habit.id }}">Delete</a><br>
+    {% endif %}
+    {% endfor %}
+
+    <button type="submit" form="checklist-form">Save Today's Results</button>
 
 </body>
 
