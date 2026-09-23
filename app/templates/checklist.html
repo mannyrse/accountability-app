@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accountability</title>
+</head>
+
+<body>
+    <h1>Today's Checklist</h1>
+
+    <form method="post" action="/save-checklist">
+        <p><a href="/add-habit">+ Add a habit</a></p>
+
+        <h2>Good Habits</h2>
+        {% for item in checklist %}
+        {% if item.habit.type == "good" %}
+        <label>
+            <input type="checkbox" name="habit_{{ item.habit.id }}" {% if item.checked %}checked{% endif %}>
+            {{ item.habit.name }}
+        </label>
+        <a href="/edit-habit/{{ item.habit.id }}">Edit</a>
+        <a href="/delete-habit/{{ item.habit.id }}">Delete</a><br>
+        {% endif %}
+        {% endfor %}
+
+        <h2>Bad Habits</h2>
+        {% for item in checklist %}
+        {% if item.habit.type == "bad" %}
+        <label>
+            <input type="checkbox" name="habit_{{ item.habit.id }}" {% if item.checked %}checked{% endif %}>
+            {{ item.habit.name }}
+        </label>
+        <a href="/edit-habit/{{ item.habit.id }}">Edit</a>
+        <a href="/delete-habit/{{ item.habit.id }}">Delete</a><br>
+        {% endif %}
+        {% endfor %}
+
+        <button type="submit">Save Today's Results</button>
+    </form>
+
+</body>
+
+</html>
