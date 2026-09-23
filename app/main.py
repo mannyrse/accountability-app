@@ -47,3 +47,30 @@ def show_checklist(request: Request):
     return templates.TemplateResponse(
         request=request, name="checklist.html", context={"checklist": checklist}
     )
+
+@app.post("/save-checklist")
+async def save_checklist(request: Request):
+    form_data = await request.form()
+    db = SessionLocal()
+
+    habits = db.query(Habit).filter(Habit.active == True).all()
+    today = date.today()
+
+    for habit in habits:
+        field_name = f"habit_{habit.id}"
+        was_checked = field_name in form_data
+
+        checkin = db.query(DailyCheckin).filter(
+            DailyCheckin.habit_id == habit.id,
+            DailyCheckin.date == today
+        ).first()
+
+        if checkin:
+            checkin.completed = was_checked
+        else:
+            checkin = DailyCheckin(habit_id=habit.id, date=today, completed=was_checked)
+            db.add(checkin)
+
+    db.commit()
+    db.close()
+    return RedirectResponse(url="/", status_code=303)
