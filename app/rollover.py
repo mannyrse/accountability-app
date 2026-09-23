@@ -8,8 +8,13 @@ def run_daily_rollover(for_date: date = None):
         for_date = date.today()
 
     db = SessionLocal()
-    habits = db.query(Habit).filter(Habit.active == True).all()
     points_row = db.query(Points).first()
+
+    if points_row.last_rollover_date == for_date:
+        db.close()
+        return
+
+    habits = db.query(Habit).filter(Habit.active == True, Habit.type == "good").all()
 
     total_earned = 0
 
@@ -21,22 +26,18 @@ def run_daily_rollover(for_date: date = None):
 
         completed = checkin.completed if checkin else False
 
-        failed = (
-            (habit.type == "good" and completed == False)
-            or (habit.type == "bad" and completed == True)
-        )
-
-        if failed:
+        if not completed:
             transaction = PointTransaction(
                 amount=habit.point_value,
                 type="failure",
-                reason=f"Missed {habit.name}" if habit.type == "good" else f"Did {habit.name}",
+                reason=f"Missed {habit.name}",
             )
             db.add(transaction)
             total_earned += habit.point_value
 
     points_row.current_points += total_earned
     points_row.lifetime_points += total_earned
+    points_row.last_rollover_date = for_date
 
     db.commit()
     db.close()

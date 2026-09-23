@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from app.database import SessionLocal
-from app.models import Habit, DailyCheckin
+from app.models import Habit, DailyCheckin, Points, PointTransaction
 from datetime import date
 from app.rollover import run_daily_rollover
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -45,39 +45,18 @@ def show_checklist(request: Request, edit_id: Optional[int] = None, add_type: Op
     if edit_id is not None:
         editing_habit = db.query(Habit).filter(Habit.id == edit_id).first()
 
+    points_row = db.query(Points).first()
+
     db.close()
     return templates.TemplateResponse(
         request=request, name="checklist.html",
-        context={"checklist": checklist, "editing_habit": editing_habit, "add_type": add_type}
+        context={
+            "checklist": checklist,
+            "editing_habit": editing_habit,
+            "add_type": add_type,
+            "points": points_row,
+        }
     )
-
-
-@app.post("/save-checklist")
-async def save_checklist(request: Request):
-    form_data = await request.form()
-    db = SessionLocal()
-
-    habits = db.query(Habit).filter(Habit.active == True).all()
-    today = date.today()
-
-    for habit in habits:
-        field_name = f"habit_{habit.id}"
-        was_checked = field_name in form_data
-
-        checkin = db.query(DailyCheckin).filter(
-            DailyCheckin.habit_id == habit.id,
-            DailyCheckin.date == today
-        ).first()
-
-        if checkin:
-            checkin.completed = was_checked
-        else:
-            checkin = DailyCheckin(habit_id=habit.id, date=today, completed=was_checked)
-            db.add(checkin)
-
-    db.commit()
-    db.close()
-    return RedirectResponse(url="/", status_code=303)
 
 
 @app.get("/delete-habit/{habit_id}")
@@ -102,6 +81,61 @@ def edit_habit(
     habit.name = name
     habit.type = type
     habit.point_value = point_value
+    db.commit()
+    db.close()
+    return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/save-checklist")
+async def save_checklist(request: Request):
+    form_data = await request.form()
+    db = SessionLocal()
+
+    habits = db.query(Habit).filter(Habit.active == True).all()
+    today = date.today()
+    points_row = db.query(Points).first()
+
+    for habit in habits:
+        field_name = f"habit_{habit.id}"
+        was_checked = field_name in form_data
+
+        checkin = db.query(DailyCheckin).filter(
+            DailyCheckin.habit_id == habit.id,
+            DailyCheckin.date == today
+        ).first()
+
+        if not checkin:
+            checkin = DailyCheckin(habit_id=habit.id, date=today, completed=was_checked)
+            db.add(checkin)
+            db.flush()
+        else:
+            checkin.completed = was_checked
+
+        if habit.type == "bad":
+            if was_checked and not checkin.point_awarded:
+                transaction = PointTransaction(
+                    amount=habit.point_value,
+                    type="failure",
+                    reason=f"Did {habit.name}",
+                )
+                db.add(transaction)
+                db.flush()
+                checkin.point_awarded = True
+                checkin.point_transaction_id = transaction.id
+                points_row.current_points += habit.point_value
+                points_row.lifetime_points += habit.point_value
+
+            elif not was_checked and checkin.point_awarded:
+                old_transaction = db.query(PointTransaction).filter(
+                    PointTransaction.id == checkin.point_transaction_id
+                ).first()
+                if old_transaction:
+                    points_row.current_points -= old_transaction.amount
+                    points_row.lifetime_points -= old_transaction.amount
+                    db.delete(old_transaction)
+                checkin.point_awarded = False
+                checkin.point_transaction_id = None
+
     db.commit()
     db.close()
     return RedirectResponse(url="/", status_code=303)

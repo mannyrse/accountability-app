@@ -19,6 +19,9 @@ class DailyCheckin(Base):
     habit_id = Column(Integer, ForeignKey("habits.id"), nullable=False)
     date = Column(Date, nullable=False)
     completed = Column(Boolean, nullable=False, default=False)
+    point_awarded = Column(Boolean, nullable=False, default=False)
+    point_transaction_id = Column(Integer, ForeignKey("point_transactions.id"), nullable=True)
+
 
 class Points(Base):
     __tablename__ = "points"
@@ -26,6 +29,8 @@ class Points(Base):
     id = Column(Integer, primary_key=True)
     current_points = Column(Integer, nullable=False, default=0)
     lifetime_points = Column(Integer, nullable=False, default=0)
+    last_rollover_date = Column(Date, nullable=True)
+
 
 class PointTransaction(Base):
     __tablename__ = "point_transactions"
@@ -34,4 +39,4 @@ class PointTransaction(Base):
     amount = Column(Integer, nullable=False)
     type = Column(Text, nullable=False)
     reason = Column(Text, nullable=False)
-created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
