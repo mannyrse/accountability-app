@@ -1,9 +1,10 @@
 import os
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from app.database import SessionLocal
-from app.models import Habit, Points, Reward, PointTransaction
+from app.models import Habit, Points, Reward, PointTransaction, PendingNotification
+from datetime import datetime, timezone
 
 load_dotenv()
 
@@ -14,10 +15,6 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user}")
 
 @bot.tree.command(name="points", description="Check current and lifetime points")
 async def points(interaction: discord.Interaction):
@@ -44,7 +41,8 @@ async def rewards(interaction: discord.Interaction):
         message += f"• {reward.name} — {reward.point_cost} pts\n"
     message += f"\nAvailable points: {points_row.current_points}"
 
-    await interaction.response.send_message(message) 
+    await interaction.response.send_message(message)
+
 
 async def reward_autocomplete(interaction: discord.Interaction, current: str):
     db = SessionLocal()
@@ -79,6 +77,34 @@ async def redeem(interaction: discord.Interaction, reward_id: int):
 
     db.close()
     await interaction.response.send_message(message)
+
+
+@tasks.loop(seconds=30)
+async def check_pending_notifications():
+    db = SessionLocal()
+    now = datetime.now(timezone.utc)
+
+    due = db.query(PendingNotification).filter(
+        PendingNotification.status == "pending",
+        PendingNotification.scheduled_at <= now,
+    ).all()
+
+    channel = bot.get_channel(int(os.getenv("DISCORD_CHANNEL_ID")))
+
+    for notification in due:
+        habit = db.query(Habit).filter(Habit.id == notification.habit_id).first()
+        await channel.send(f"🚨 Bad habit alert: **{habit.name}** was checked off.")
+        notification.status = "sent"
+
+    db.commit()
+    db.close()
+
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user}")
+    check_pending_notifications.start()
+
 
 @bot.event
 async def on_connect():

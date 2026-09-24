@@ -125,13 +125,22 @@ async def save_checklist(request: Request):
                 points_row.current_points += habit.point_value
                 points_row.lifetime_points += habit.point_value
 
-                notification = PendingNotification(
-                    habit_id=habit.id,
-                    date=today,
-                    scheduled_at=datetime.now(timezone.utc) + timedelta(minutes=1),
-                    status="pending",
-                )
-                db.add(notification)
+                existing_nofication = db.query(PendingNotification).filter(
+                    PendingNotification.habit_id == habit.id,
+                    PendingNotification.date == today,
+                ).first()
+
+                if existing_nofication:
+                    existing_nofication.status = "pending"
+                    existing_nofication.scheduled_at = datetime.now(timezone.utc)
+                else:
+                    notification = PendingNotification(
+                        habit_id=habit.id,
+                        date=today,
+                        scheduled_at=datetime.now(timezone.utc) + timedelta(minutes=1),
+                        status="pending",
+                    )
+                    db.add(notification)
 
             elif not was_checked and checkin.point_awarded:
                 old_transaction = db.query(PointTransaction).filter(
