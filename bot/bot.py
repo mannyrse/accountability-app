@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from app.database import SessionLocal
-from app.models import Habit, Points, Reward, PointTransaction, PendingNotification
+from app.models import Habit, Points, Reward, PointTransaction, PendingNotification, DailyReport
 from datetime import datetime, timezone
 
 load_dotenv()
@@ -24,6 +24,7 @@ async def points(interaction: discord.Interaction):
     await interaction.response.send_message(
         f"Current points: {points_row.current_points}\nLifetime points: {points_row.lifetime_points}"
     )
+
 
 @bot.tree.command(name="rewards", description="View the reward shop")
 async def rewards(interaction: discord.Interaction):
@@ -100,10 +101,27 @@ async def check_pending_notifications():
     db.close()
 
 
+@tasks.loop(seconds=30)
+async def check_daily_reports():
+    db = SessionLocal()
+
+    due = db.query(DailyReport).filter(DailyReport.status == "pending").all()
+
+    channel = bot.get_channel(int(os.getenv("DISCORD_CHANNEL_ID")))
+
+    for report in due:
+        await channel.send(report.message)
+        report.status = "sent"
+
+    db.commit()
+    db.close()
+
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
     check_pending_notifications.start()
+    check_daily_reports.start()
 
 
 @bot.event
