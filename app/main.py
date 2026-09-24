@@ -2,8 +2,8 @@ from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from app.database import SessionLocal
-from app.models import Habit, DailyCheckin, Points, PointTransaction, Reward
-from datetime import date
+from app.models import Habit, DailyCheckin, Points, PointTransaction, Reward, PendingNotification
+from datetime import date, timedelta, datetime, timezone
 from app.rollover import run_daily_rollover
 from apscheduler.schedulers.background import BackgroundScheduler
 from typing import Optional
@@ -125,6 +125,14 @@ async def save_checklist(request: Request):
                 points_row.current_points += habit.point_value
                 points_row.lifetime_points += habit.point_value
 
+                notification = PendingNotification(
+                    habit_id=habit.id,
+                    date=today,
+                    scheduled_at=datetime.now(timezone.utc) + timedelta(minutes=1),
+                    status="pending",
+                )
+                db.add(notification)
+
             elif not was_checked and checkin.point_awarded:
                 old_transaction = db.query(PointTransaction).filter(
                     PointTransaction.id == checkin.point_transaction_id
@@ -135,6 +143,14 @@ async def save_checklist(request: Request):
                     db.delete(old_transaction)
                 checkin.point_awarded = False
                 checkin.point_transaction_id = None
+
+                pending = db.query(PendingNotification).filter(
+                    PendingNotification.habit_id == habit.id,
+                    PendingNotification.date == today,
+                    PendingNotification.status == "pending",
+                ).first()
+                if pending:
+                    pending.status = "cancelled"
 
     db.commit()
     db.close()

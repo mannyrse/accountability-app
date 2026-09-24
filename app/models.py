@@ -50,3 +50,12 @@ class Reward(Base):
     description = Column(Text, nullable=True)
     point_cost = Column(Integer, nullable=False)
     active = Column(Boolean, nullable=False, default=True)
+
+class PendingNotification(Base):
+    __tablename__ = "pending_notifications"
+
+    id = Column(Integer, primary_key=True)
+    habit_id = Column(Integer, ForeignKey("habits.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    scheduled_at = Column(DateTime, nullable=False)
+    status = Column(Text, nullable=False)
