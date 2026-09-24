@@ -59,3 +59,12 @@ class PendingNotification(Base):
     date = Column(Date, nullable=False)
     scheduled_at = Column(DateTime, nullable=False)
     status = Column(Text, nullable=False)
+
+class DailyReport(Base):
+    __tablename__ = "daily_reports"
+
+    id = Column(Integer, primary_key=True)
+    date = Column(Date, nullable=False, unique=True)
+    message = Column(Text, nullable=False)
+    status = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

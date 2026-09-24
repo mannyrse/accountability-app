@@ -1,6 +1,6 @@
 from datetime import date
 from app.database import SessionLocal
-from app.models import Habit, DailyCheckin, PointTransaction, Points
+from app.models import Habit, DailyCheckin, PointTransaction, Points, DailyReport
 
 
 def run_daily_rollover(for_date: date = None):
@@ -17,6 +17,7 @@ def run_daily_rollover(for_date: date = None):
     habits = db.query(Habit).filter(Habit.active == True, Habit.type == "good").all()
 
     total_earned = 0
+    missed_habits = []
 
     for habit in habits:
         checkin = db.query(DailyCheckin).filter(
@@ -34,10 +35,20 @@ def run_daily_rollover(for_date: date = None):
             )
             db.add(transaction)
             total_earned += habit.point_value
+            missed_habits.append(habit.name)
 
     points_row.current_points += total_earned
     points_row.lifetime_points += total_earned
     points_row.last_rollover_date = for_date
+
+    if missed_habits:
+        missed_list = "\n".join(f"❌ {name}" for name in missed_habits)
+        message = f"📋 Daily Report ({for_date})\n\n{missed_list}\n\nPoints earned: +{total_earned}\nCurrent points: {points_row.current_points}\nLifetime points: {points_row.lifetime_points}"
+    else:
+        message = f"📋 Daily Report ({for_date})\n\nAll good habits completed! 🎉\n\nCurrent points: {points_row.current_points}\nLifetime points: {points_row.lifetime_points}"
+
+    report = DailyReport(date=for_date, message=message, status="pending")
+    db.add(report)
 
     db.commit()
     db.close()
