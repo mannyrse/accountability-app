@@ -28,6 +28,58 @@ async def points(interaction: discord.Interaction):
         f"Current points: {points_row.current_points}\nLifetime points: {points_row.lifetime_points}"
     )
 
+@bot.tree.command(name="rewards", description="View the reward shop")
+async def rewards(interaction: discord.Interaction):
+    db = SessionLocal()
+    reward_list = db.query(Reward).filter(Reward.active == True).all()
+    points_row = db.query(Points).first()
+    db.close()
+
+    if not reward_list:
+        await interaction.response.send_message("No rewards available yet.")
+        return
+
+    message = "**Reward Shop**\n"
+    for reward in reward_list:
+        message += f"• {reward.name} — {reward.point_cost} pts\n"
+    message += f"\nAvailable points: {points_row.current_points}"
+
+    await interaction.response.send_message(message) 
+
+async def reward_autocomplete(interaction: discord.Interaction, current: str):
+    db = SessionLocal()
+    reward_list = db.query(Reward).filter(Reward.active == True).all()
+    db.close()
+    return [
+        discord.app_commands.Choice(name=reward.name, value=reward.id)
+        for reward in reward_list
+        if current.lower() in reward.name.lower()
+    ][:25]
+
+
+@bot.tree.command(name="redeem", description="Redeem a reward using your points")
+@discord.app_commands.autocomplete(reward_id=reward_autocomplete)
+async def redeem(interaction: discord.Interaction, reward_id: int):
+    db = SessionLocal()
+    reward = db.query(Reward).filter(Reward.id == reward_id).first()
+    points_row = db.query(Points).first()
+
+    if points_row.current_points >= reward.point_cost:
+        transaction = PointTransaction(
+            amount=-reward.point_cost,
+            type="reward",
+            reason=reward.name,
+        )
+        db.add(transaction)
+        points_row.current_points -= reward.point_cost
+        db.commit()
+        message = f"Redeemed **{reward.name}** for {reward.point_cost} points! Remaining: {points_row.current_points}"
+    else:
+        message = f"Not enough points. You have {points_row.current_points}, but {reward.name} costs {reward.point_cost}."
+
+    db.close()
+    await interaction.response.send_message(message)
+
 @bot.event
 async def on_connect():
     await bot.tree.sync()
