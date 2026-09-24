@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reward Shop</title>
+</head>
+
+<body>
+    <h1>Reward Shop</h1>
+
+    <p><a href="/">Checklist</a></p>
+
+    <p>Current Points: {{ points.current_points }} | Lifetime Points: {{ points.lifetime_points }}</p>
+
+    <h2>Rewards <a href="/rewards?add_reward=true">[+]</a></h2>
+
+    {% if add_reward %}
+    <form method="post" action="/add-reward">
+        <input type="text" name="name" placeholder="Reward name" required autofocus>
+        <input type="text" name="description" placeholder="Description (optional)">
+        <input type="number" name="point_cost" placeholder="Point cost" required>
+        <button type="submit">Add</button>
+    </form>
+    <p><a href="/rewards">Cancel</a></p>
+    {% endif %}
+
+    {% for reward in rewards %}
+    <div>
+        <strong>{{ reward.name }}</strong> — {{ reward.point_cost }} pts
+        {% if reward.description %}
+        <br><small>{{ reward.description }}</small>
+        {% endif %}
+        <br>
+        <form method="post" action="/redeem/{{ reward.id }}" style="display: inline;">
+            <button type="submit" {% if points.current_points < reward.point_cost %}disabled{% endif %}>
+                Redeem
+            </button>
+        </form>
+    </div>
+    <hr>
+    {% endfor %}
+
+</body>
+
+</html>

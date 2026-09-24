@@ -40,3 +40,13 @@ class PointTransaction(Base):
     type = Column(Text, nullable=False)
     reason = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class Reward(Base):
+    __tablename__ = "rewards"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    point_cost = Column(Integer, nullable=False)
+    active = Column(Boolean, nullable=False, default=True)

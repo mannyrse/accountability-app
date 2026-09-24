@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from app.database import SessionLocal
-from app.models import Habit, DailyCheckin, Points, PointTransaction
+from app.models import Habit, DailyCheckin, Points, PointTransaction, Reward
 from datetime import date
 from app.rollover import run_daily_rollover
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -140,6 +140,48 @@ async def save_checklist(request: Request):
     db.close()
     return RedirectResponse(url="/", status_code=303)
 
+@app.post("/add-reward")
+def create_reward(
+    name: str = Form(...),
+    description: str = Form(""),
+    point_cost: int = Form(...),
+):
+    db = SessionLocal()
+    new_reward  = Reward(name=name, description=description, point_cost=point_cost)
+    db.add(new_reward)
+    db.commit()
+    db.close()
+    return RedirectResponse(url="/rewards", status_code=303)
+
+@app.get("/rewards")
+def show_rewards(request: Request, add_reward: Optional[bool] = None):
+    db = SessionLocal()
+    rewards = db.query(Reward).filter(Reward.active == True).all()
+    points_row = db.query(Points).first()
+    db.close()
+    return templates.TemplateResponse(
+        request=request, name="rewards.html",
+        context={"rewards": rewards, "points": points_row, "add_reward": add_reward}
+    )
+
+@app.post("/redeem/{reward_id}")
+def redeem_reward(reward_id: int):
+    db = SessionLocal()
+    reward = db.query(Reward).filter(Reward.id == reward_id).first()
+    points_row = db.query(Points).first()
+
+    if points_row.current_points >= reward.point_cost:
+        transaction = PointTransaction(
+            amount=-reward.point_cost,
+            type="reward",
+            reason=reward.name,
+        )
+        db.add(transaction)
+        points_row.current_points -= reward.point_cost
+
+    db.commit()
+    db.close()
+    return RedirectResponse(url="/rewards", status_code=303)
 
 @app.get("/test-rollover")
 def test_rollover():
