@@ -40,6 +40,8 @@ async def rewards(interaction: discord.Interaction):
     message = "**Reward Shop**\n"
     for reward in reward_list:
         message += f"• {reward.name} — {reward.point_cost} pts\n"
+        if reward.description:
+            message += f"   _{reward.description}_\n"
     message += f"\nAvailable points: {points_row.current_points}"
 
     await interaction.response.send_message(message)

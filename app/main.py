@@ -178,15 +178,46 @@ def create_reward(
     db.close()
     return RedirectResponse(url="/rewards", status_code=303)
 
+@app.get("/delete-reward/{reward_id}")
+def delete_reward(reward_id: int):
+    db = SessionLocal()
+    reward = db.query(Reward).filter(Reward.id == reward_id).first()
+    reward.active = False
+    db.commit()
+    db.close()
+    return RedirectResponse(url="/rewards", status_code=303)
+
+
+@app.post("/edit-reward/{reward_id}")
+def edit_reward(
+    reward_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    point_cost: int = Form(...),
+):
+    db = SessionLocal()
+    reward = db.query(Reward).filter(Reward.id == reward_id).first()
+    reward.name = name
+    reward.description = description
+    reward.point_cost = point_cost
+    db.commit()
+    db.close()
+    return RedirectResponse(url="/rewards", status_code=303)
+
 @app.get("/rewards")
-def show_rewards(request: Request, add_reward: Optional[bool] = None):
+def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_reward_id: Optional[int] = None):
     db = SessionLocal()
     rewards = db.query(Reward).filter(Reward.active == True).all()
     points_row = db.query(Points).first()
+
+    editing_reward = None
+    if edit_reward_id is not None:
+        editing_reward = db.query(Reward).filter(Reward.id == edit_reward_id).first()
+
     db.close()
     return templates.TemplateResponse(
         request=request, name="rewards.html",
-        context={"rewards": rewards, "points": points_row, "add_reward": add_reward}
+        context={"rewards": rewards, "points": points_row, "add_reward": add_reward, "editing_reward": editing_reward}
     )
 
 @app.post("/redeem/{reward_id}")
@@ -213,6 +244,9 @@ def test_rollover():
     run_daily_rollover()
     return {"status": "rollover ran"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_daily_rollover, "cron", hour=23, minute=59)
