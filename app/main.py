@@ -7,8 +7,18 @@ from datetime import date, timedelta, datetime, timezone
 from app.rollover import run_daily_rollover
 from apscheduler.schedulers.background import BackgroundScheduler
 from typing import Optional
+from contextlib import asynccontextmanager
+import asyncio
+from bot.bot import bot, TOKEN
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(bot.start(TOKEN))
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="app/templates")
 
 
@@ -125,14 +135,14 @@ async def save_checklist(request: Request):
                 points_row.current_points += habit.point_value
                 points_row.lifetime_points += habit.point_value
 
-                existing_nofication = db.query(PendingNotification).filter(
+                existing_notification = db.query(PendingNotification).filter(
                     PendingNotification.habit_id == habit.id,
                     PendingNotification.date == today,
                 ).first()
 
-                if existing_nofication:
-                    existing_nofication.status = "pending"
-                    existing_nofication.scheduled_at = datetime.now(timezone.utc)
+                if existing_notification:
+                    existing_notification.status = "pending"
+                    existing_notification.scheduled_at = datetime.now(timezone.utc) + timedelta(minutes=1)
                 else:
                     notification = PendingNotification(
                         habit_id=habit.id,
@@ -141,7 +151,7 @@ async def save_checklist(request: Request):
                         status="pending",
                     )
                     db.add(notification)
-
+                    
             elif not was_checked and checkin.point_awarded:
                 old_transaction = db.query(PointTransaction).filter(
                     PointTransaction.id == checkin.point_transaction_id

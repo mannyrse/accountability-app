@@ -122,13 +122,12 @@ async def check_daily_reports():
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
-    check_pending_notifications.start()
-    check_daily_reports.start()
+    if not check_pending_notifications.is_running():
+        check_pending_notifications.start()
+    if not check_daily_reports.is_running():
+        check_daily_reports.start()
 
 
 @bot.event
 async def on_connect():
     await bot.tree.sync()
-
-
-bot.run(TOKEN)
