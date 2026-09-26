@@ -13,11 +13,12 @@ from bot.bot import bot, TOKEN
 from fastapi.staticfiles import StaticFiles
 from apscheduler.triggers.cron import CronTrigger
 import pytz
+from fastapi.responses import JSONResponse
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    asyncio.create_task(bot.start(TOKEN))
+    # asyncio.create_task(bot.start(TOKEN))
     yield
 
 
@@ -222,7 +223,7 @@ def edit_reward(
 @app.get("/rewards")
 def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_reward_id: Optional[int] = None):
     db = SessionLocal()
-    rewards = db.query(Reward).filter(Reward.active == True).all()
+    rewards = db.query(Reward).filter(Reward.active == True).order_by(Reward.point_cost.asc()).all()
     points_row = db.query(Points).first()
     redemptions = db.query(Redemption).order_by(Redemption.redeemed_at.desc()).limit(30).all()
 
@@ -278,6 +279,85 @@ def toggle_redemption(redemption_id: int):
     db.commit()
     db.close()
     return RedirectResponse(url="/rewards", status_code=303)
+
+@app.post("/toggle-checkin")
+async def toggle_checkin(request: Request):
+    data = await request.json()
+    habit_id = data.get("habit_id")
+    was_checked = data.get("checked")
+
+    db = SessionLocal()
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    today = date.today()
+    points_row = db.query(Points).first()
+
+    checkin = db.query(DailyCheckin).filter(
+        DailyCheckin.habit_id == habit.id,
+        DailyCheckin.date == today
+    ).first()
+
+    if not checkin:
+        checkin = DailyCheckin(habit_id=habit.id, date=today, completed=was_checked)
+        db.add(checkin)
+        db.flush()
+    else:
+        checkin.completed = was_checked
+
+    if habit.type == "bad":
+        if was_checked and not checkin.point_awarded:
+            transaction = PointTransaction(
+                amount=habit.point_value,
+                type="failure",
+                reason=f"Did {habit.name}",
+            )
+            db.add(transaction)
+            db.flush()
+            checkin.point_awarded = True
+            checkin.point_transaction_id = transaction.id
+            points_row.current_points += habit.point_value
+            points_row.lifetime_points += habit.point_value
+
+            existing_notification = db.query(PendingNotification).filter(
+                PendingNotification.habit_id == habit.id,
+                PendingNotification.date == today,
+            ).first()
+            if existing_notification:
+                existing_notification.status = "pending"
+                existing_notification.scheduled_at = datetime.now(timezone.utc) + timedelta(minutes=1)
+            else:
+                notification = PendingNotification(
+                    habit_id=habit.id,
+                    date=today,
+                    scheduled_at=datetime.now(timezone.utc) + timedelta(minutes=1),
+                    status="pending",
+                )
+                db.add(notification)
+
+        elif not was_checked and checkin.point_awarded:
+            old_transaction = db.query(PointTransaction).filter(
+                PointTransaction.id == checkin.point_transaction_id
+            ).first()
+            if old_transaction:
+                points_row.current_points -= old_transaction.amount
+                points_row.lifetime_points -= old_transaction.amount
+                db.delete(old_transaction)
+            checkin.point_awarded = False
+            checkin.point_transaction_id = None
+
+            pending = db.query(PendingNotification).filter(
+                PendingNotification.habit_id == habit.id,
+                PendingNotification.date == today,
+                PendingNotification.status == "pending",
+            ).first()
+            if pending:
+                pending.status = "cancelled"
+
+    db.commit()
+    current = points_row.current_points
+    lifetime = points_row.lifetime_points
+    db.close()
+
+    return JSONResponse({"current_points": current, "lifetime_points": lifetime})
 
 @app.get("/test-rollover")
 def test_rollover():

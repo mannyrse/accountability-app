@@ -14,20 +14,19 @@
 <body>
     <div class="app">
         <p class="today-date">{{ today }}</p>
+
         <div class="tabs">
             <a href="/" class="active">Today</a>
             <a href="/rewards">Rewards</a>
         </div>
 
-
-
         <div class="balance-card">
             <div class="balance-item">
-                <div class="balance-num">{{ points.current_points }}</div>
+                <div class="balance-num" id="current-points">{{ points.current_points }}</div>
                 <div class="balance-label">CURRENT</div>
             </div>
             <div class="balance-item">
-                <div class="balance-num">{{ points.lifetime_points }}</div>
+                <div class="balance-num" id="lifetime-points">{{ points.lifetime_points }}</div>
                 <div class="balance-label">LIFETIME</div>
             </div>
         </div>
@@ -47,8 +46,6 @@
         <a class="cancel-link" href="/">Cancel</a>
         {% endif %}
 
-        <form id="checklist-form" method="post" action="/save-checklist"></form>
-
         <h2>Good habits <a class="add-btn" href="/?add_type=good">+</a></h2>
 
         {% if add_type == "good" %}
@@ -65,8 +62,8 @@
             {% for item in checklist %}
             {% if item.habit.type == "good" %}
             <div class="row">
-                <input class="check" type="checkbox" form="checklist-form" name="habit_{{ item.habit.id }}" {% if
-                    item.checked %}checked{% endif %}>
+                <input class="check" type="checkbox" data-habit-id="{{ item.habit.id }}" {% if item.checked %}checked{%
+                    endif %}>
                 <span class="name">{{ item.habit.name }}</span>
                 <span class="tag{% if not item.checked %} at-risk{% endif %}">{{ item.habit.point_value }} pt{% if
                     item.habit.point_value != 1 %}s{% endif %} at risk</span>
@@ -93,8 +90,8 @@
             {% for item in checklist %}
             {% if item.habit.type == "bad" %}
             <div class="row bad">
-                <input class="check" type="checkbox" form="checklist-form" name="habit_{{ item.habit.id }}" {% if
-                    item.checked %}checked{% endif %}>
+                <input class="check" type="checkbox" data-habit-id="{{ item.habit.id }}" {% if item.checked %}checked{%
+                    endif %}>
                 <span class="name">{{ item.habit.name }}</span>
                 <span class="tag{% if item.checked %} at-risk{% endif %}">{{ item.habit.point_value }} pt{% if
                     item.habit.point_value != 1 %}s{% endif %} at risk</span>
@@ -105,11 +102,8 @@
             {% endfor %}
         </div>
     </div>
-
-    <div class="save-bar">
-        <button type="submit" form="checklist-form">Save Today's Results</button>
-    </div>
-
+    <script src="/static/checklist.js"></script>
+</body>
 </body>
 
 </html>

@@ -21,7 +21,7 @@ body {
     background: var(--bg);
     color: var(--text);
     font-family: 'Manrope', sans-serif;
-    padding: 20px 16px 110px;
+    padding: 20px 16px 40px;
 }
 
 .app {
@@ -241,7 +241,7 @@ h2 {
     text-decoration: none;
 }
 
-/* Checklist page: sticky save button */
+/* Checklist page: sticky save button
 .save-bar {
     position: fixed;
     bottom: 0;
@@ -265,7 +265,7 @@ h2 {
     padding: 15px;
     font-size: 0.95rem;
     cursor: pointer;
-}
+} */
 
 /* Rewards page: reward cards */
 .reward-card {
@@ -401,4 +401,11 @@ details.redeemed-history[open] summary::before {
     font-size: 1.4rem;
     font-weight: 800;
     margin: 4px 0 20px;
+}
+
+.balance-num {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--amber);
+    display: inline-block;
 }
