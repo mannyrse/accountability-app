@@ -68,3 +68,12 @@ class DailyReport(Base):
     message = Column(Text, nullable=False)
     status = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+class Redemption(Base):
+    __tablename__ = "redemptions"
+
+    id = Column(Integer, primary_key=True)
+    reward_name = Column(Text, nullable=False)
+    point_cost = Column(Integer, nullable=False)
+    completed = Column(Boolean, nullable=False, default=False)
+    redeemed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

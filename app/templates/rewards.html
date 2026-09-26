@@ -5,56 +5,121 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reward Shop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 
 <body>
-    <h1>Reward Shop</h1>
+    <div class="app">
+        <p class="today-date">{{ today }}</p>
+        <div class="tabs">
+            <a href="/">Today</a>
+            <a href="/rewards" class="active">Rewards</a>
+        </div>
 
-    <p><a href="/">Checklist</a></p>
+        <div class="balance-card">
+            <div class="balance-item">
+                <div class="balance-num">{{ points.current_points }}</div>
+                <div class="balance-label">CURRENT</div>
+            </div>
+            <div class="balance-item">
+                <div class="balance-num">{{ points.lifetime_points }}</div>
+                <div class="balance-label">LIFETIME</div>
+            </div>
+        </div>
 
-    <p>Current Points: {{ points.current_points }} | Lifetime Points: {{ points.lifetime_points }}</p>
-
-    {% if editing_reward %}
-    <h2>Editing: {{ editing_reward.name }}</h2>
-    <form method="post" action="/edit-reward/{{ editing_reward.id }}">
-        <input type="text" name="name" value="{{ editing_reward.name }}" required>
-        <input type="text" name="description" value="{{ editing_reward.description or '' }}">
-        <input type="number" name="point_cost" value="{{ editing_reward.point_cost }}" required>
-        <button type="submit">Save Changes</button>
-    </form>
-    <p><a href="/rewards">Cancel</a></p>
-    {% endif %}
-
-    <h2>Rewards <a href="/rewards?add_reward=true">[+]</a></h2>
-
-    {% if add_reward %}
-    <form method="post" action="/add-reward">
-        <input type="text" name="name" placeholder="Reward name" required autofocus>
-        <input type="text" name="description" placeholder="Description (optional)">
-        <input type="number" name="point_cost" placeholder="Point cost" required>
-        <button type="submit">Add</button>
-    </form>
-    <p><a href="/rewards">Cancel</a></p>
-    {% endif %}
-
-    {% for reward in rewards %}
-    <div>
-        <strong>{{ reward.name }}</strong> — {{ reward.point_cost }} pts
-        {% if reward.description %}
-        <br><small>{{ reward.description }}</small>
-        {% endif %}
-        <br>
-        <a href="/rewards?edit_reward_id={{ reward.id }}">Edit</a>
-        <a href="/delete-reward/{{ reward.id }}">Delete</a>
-        <form method="post" action="/redeem/{{ reward.id }}" style="display: inline;">
-            <button type="submit" {% if points.current_points < reward.point_cost %}disabled{% endif %}>
-                Redeem
-            </button>
+        {% if editing_reward %}
+        <h2>Editing reward</h2>
+        <form class="inline-form" method="post" action="/edit-reward/{{ editing_reward.id }}">
+            <input type="text" name="name" value="{{ editing_reward.name }}" required>
+            <input type="text" name="description" value="{{ editing_reward.description or '' }}">
+            <input type="number" name="point_cost" value="{{ editing_reward.point_cost }}" required min="1"
+                class="input-narrow">
+            <button type="submit">Save</button>
         </form>
-    </div>
-    <hr>
-    {% endfor %}
+        <a class="cancel-link" href="/rewards">Cancel</a>
+        {% endif %}
 
+        <h2>Rewards <a class="add-btn" href="/rewards?add_reward=true">+</a></h2>
+
+        {% if add_reward %}
+        <form class="inline-form" method="post" action="/add-reward">
+            <input type="text" name="name" placeholder="Reward name" required autofocus>
+            <input type="text" name="description" placeholder="Description (optional)">
+            <input type="number" name="point_cost" placeholder="Cost" required min="1" class="input-narrow">
+            <button type="submit">Add</button>
+        </form>
+        <a class="cancel-link" href="/rewards">Cancel</a>
+        {% endif %}
+
+        {% for reward in rewards %}
+        <div class="reward-card">
+            <div class="reward-top">
+                <div>
+                    <div class="reward-name">{{ reward.name }}</div>
+                    {% if reward.description %}<div class="reward-desc">{{ reward.description }}</div>{% endif %}
+                </div>
+                <div class="reward-cost">{{ reward.point_cost }} pts</div>
+            </div>
+            <div class="reward-bottom">
+                <div class="reward-actions">
+                    <a href="/rewards?edit_reward_id={{ reward.id }}">Edit</a>
+                    <a href="/delete-reward/{{ reward.id }}">Delete</a>
+                </div>
+                <form method="post" action="/redeem/{{ reward.id }}">
+                    <button class="redeem-btn" type="submit" {% if points.current_points < reward.point_cost
+                        %}disabled{% endif %}>Redeem</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+        <h2>Redeemed</h2>
+
+        {% set pending_redemptions = redemptions | selectattr("completed", "equalto", false) | list %}
+        {% set completed_redemptions = redemptions | selectattr("completed", "equalto", true) | list %}
+
+        {% if not redemptions %}
+        <p class="empty-state">Nothing redeemed yet.</p>
+        {% endif %}
+
+        {% for r in pending_redemptions %}
+        <div class="reward-card">
+            <div class="reward-top">
+                <div>
+                    <div class="reward-name">{{ r.reward_name }}</div>
+                    <div class="reward-desc">{{ r.redeemed_at.strftime('%b %d, %I:%M %p') }}</div>
+                </div>
+                <div class="reward-cost">{{ r.point_cost }} pts</div>
+            </div>
+            <div class="reward-bottom">
+                <a href="/toggle-redemption/{{ r.id }}" class="redemption-toggle">Mark as completed</a>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if completed_redemptions %}
+        <details class="redeemed-history">
+            <summary>Completed ({{ completed_redemptions | length }})</summary>
+            {% for r in completed_redemptions %}
+            <div class="reward-card">
+                <div class="reward-top">
+                    <div>
+                        <div class="reward-name completed">{{ r.reward_name }}</div>
+                        <div class="reward-desc">{{ r.redeemed_at.strftime('%b %d, %I:%M %p') }}</div>
+                    </div>
+                    <div class="reward-cost">{{ r.point_cost }} pts</div>
+                </div>
+                <div class="reward-bottom">
+                    <a href="/toggle-redemption/{{ r.id }}" class="redemption-toggle completed">✓ Completed</a>
+                </div>
+            </div>
+            {% endfor %}
+        </details>
+        {% endif %}
+    </div>
 </body>
 
 </html>

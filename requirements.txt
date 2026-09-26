@@ -8,3 +8,4 @@ itsdangerous
 discord.py
 apscheduler
 python-multipart
+pytz

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 from app.database import SessionLocal
-from app.models import Habit, DailyCheckin, Points, PointTransaction, Reward, PendingNotification
+from app.models import Habit, DailyCheckin, Points, PointTransaction, Reward, PendingNotification, Redemption
 from datetime import date, timedelta, datetime, timezone
 from app.rollover import run_daily_rollover
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -10,6 +10,9 @@ from typing import Optional
 from contextlib import asynccontextmanager
 import asyncio
 from bot.bot import bot, TOKEN
+from fastapi.staticfiles import StaticFiles
+from apscheduler.triggers.cron import CronTrigger
+import pytz
 
 
 @asynccontextmanager
@@ -19,6 +22,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 
@@ -65,6 +69,7 @@ def show_checklist(request: Request, edit_id: Optional[int] = None, add_type: Op
             "editing_habit": editing_habit,
             "add_type": add_type,
             "points": points_row,
+            "today": today.strftime("%A, %B %-d"),
         }
     )
 
@@ -219,6 +224,7 @@ def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_rewar
     db = SessionLocal()
     rewards = db.query(Reward).filter(Reward.active == True).all()
     points_row = db.query(Points).first()
+    redemptions = db.query(Redemption).order_by(Redemption.redeemed_at.desc()).limit(30).all()
 
     editing_reward = None
     if edit_reward_id is not None:
@@ -227,7 +233,14 @@ def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_rewar
     db.close()
     return templates.TemplateResponse(
         request=request, name="rewards.html",
-        context={"rewards": rewards, "points": points_row, "add_reward": add_reward, "editing_reward": editing_reward}
+        context={
+            "rewards": rewards,
+            "points": points_row,
+            "add_reward": add_reward,
+            "editing_reward": editing_reward,
+            "redemptions": redemptions,
+            "today": date.today().strftime("%A, %B %-d"),
+        }
     )
 
 @app.post("/redeem/{reward_id}")
@@ -245,6 +258,23 @@ def redeem_reward(reward_id: int):
         db.add(transaction)
         points_row.current_points -= reward.point_cost
 
+        redemption = Redemption(
+            reward_name=reward.name,
+            point_cost=reward.point_cost,
+            completed=False,
+        )
+        db.add(redemption)
+
+    db.commit()
+    db.close()
+    return RedirectResponse(url="/rewards", status_code=303)
+
+
+@app.get("/toggle-redemption/{redemption_id}")
+def toggle_redemption(redemption_id: int):
+    db = SessionLocal()
+    redemption = db.query(Redemption).filter(Redemption.id == redemption_id).first()
+    redemption.completed = not redemption.completed
     db.commit()
     db.close()
     return RedirectResponse(url="/rewards", status_code=303)
@@ -259,5 +289,8 @@ def health_check():
     return {"status": "ok"}
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(run_daily_rollover, "cron", hour=23, minute=59)
+scheduler.add_job(
+    run_daily_rollover,
+    CronTrigger(hour=23, minute=59, timezone=pytz.timezone("America/New_York"))
+)
 scheduler.start()

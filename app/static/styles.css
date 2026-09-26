@@ -1,0 +1,404 @@
+:root {
+    --bg: #F6F7F9;
+    --card: #FFFFFF;
+    --border: #E7E9EE;
+    --text: #14171F;
+    --muted: #8A8F98;
+    --good: #16A34A;
+    --good-tint: #EAF7EE;
+    --bad: #E63946;
+    --bad-tint: #FDEAEC;
+    --amber: #F5A524;
+    --amber-tint: #FEF3E0;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    padding: 20px 16px 110px;
+}
+
+.app {
+    max-width: 430px;
+    margin: 0 auto;
+}
+
+.tabs {
+    display: flex;
+    background: var(--border);
+    border-radius: 999px;
+    padding: 4px;
+    margin-bottom: 20px;
+}
+
+.tabs a {
+    flex: 1;
+    text-align: center;
+    padding: 9px 0;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--muted);
+}
+
+.tabs a.active {
+    background: var(--card);
+    color: var(--text);
+}
+
+.balance-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    margin-bottom: 22px;
+}
+
+.balance-item {
+    flex: 1;
+    text-align: center;
+}
+
+.balance-item+.balance-item {
+    border-left: 1px solid var(--border);
+}
+
+.balance-num {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--amber);
+}
+
+.balance-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 26px 0 10px;
+}
+
+.add-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--text);
+    color: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* Checklist page: habit rows */
+.list {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.row:last-child {
+    border-bottom: none;
+}
+
+.check {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--good);
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+}
+
+.check:checked {
+    background: var(--good);
+}
+
+.check:checked::after {
+    content: "✓";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.row.bad .check {
+    border-color: var(--bad);
+}
+
+.row.bad .check:checked {
+    background: var(--bad);
+}
+
+.row .name {
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.row .tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--border);
+    color: var(--muted);
+}
+
+.row .tag.at-risk {
+    background: var(--bad-tint);
+    color: var(--bad);
+}
+
+.row.bad .tag {
+    background: var(--bad-tint);
+    color: var(--bad);
+}
+
+.row .icon-link {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 2px;
+}
+
+/* Shared: inline add/edit forms */
+.inline-form {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.inline-form input,
+.inline-form select {
+    font-family: 'Manrope', sans-serif;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 0.9rem;
+    color: var(--text);
+    flex: 1;
+    min-width: 90px;
+}
+
+.inline-form button {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    background: var(--text);
+    color: var(--card);
+    border: none;
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.cancel-link {
+    display: block;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--bad);
+    margin-bottom: 14px;
+    text-decoration: none;
+}
+
+/* Checklist page: sticky save button */
+.save-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, var(--bg) 60%, transparent);
+    padding: 20px 16px 24px;
+}
+
+.save-bar button {
+    max-width: 430px;
+    margin: 0 auto;
+    display: block;
+    width: 100%;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    background: var(--text);
+    color: var(--card);
+    border: none;
+    border-radius: 14px;
+    padding: 15px;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+/* Rewards page: reward cards */
+.reward-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 10px;
+}
+
+.reward-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.reward-name {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.reward-desc {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 3px;
+}
+
+.reward-cost {
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: var(--amber-tint);
+    color: var(--amber);
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.reward-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.reward-actions a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    margin-right: 12px;
+}
+
+.redeem-btn {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    background: var(--amber);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.redeem-btn:disabled {
+    background: var(--border);
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.redemption-name.completed {
+    text-decoration: line-through;
+    color: var(--muted);
+}
+
+.redemption-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1.5px solid var(--border);
+    color: var(--muted);
+}
+
+.redemption-toggle.completed {
+    background: var(--good-tint);
+    border-color: var(--good);
+    color: var(--good);
+}
+
+.redemption-name.completed {
+    text-decoration: line-through;
+    color: var(--muted);
+}
+
+details.redeemed-history summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    padding: 10px 0;
+    list-style: none;
+}
+
+details.redeemed-history summary::-webkit-details-marker {
+    display: none;
+}
+
+details.redeemed-history summary::before {
+    content: "▸ ";
+}
+
+details.redeemed-history[open] summary::before {
+    content: "▾ ";
+}
+
+.input-narrow {
+    max-width: 70px;
+}
+
+.empty-state {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.today-date {
+    text-align: center;
+    color: var(--text);
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 4px 0 20px;
+}
