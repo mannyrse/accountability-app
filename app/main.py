@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from apscheduler.triggers.cron import CronTrigger
 import pytz
 from fastapi.responses import JSONResponse
+from app.timezone_utils import eastern_today
 
 
 @asynccontextmanager
@@ -46,7 +47,7 @@ def show_checklist(request: Request, edit_id: Optional[int] = None, add_type: Op
     db = SessionLocal()
     habits = db.query(Habit).filter(Habit.active == True).all()
 
-    today = date.today()
+    today = eastern_today()
     checklist = []
     for habit in habits:
         checkin = db.query(DailyCheckin).filter(
@@ -108,7 +109,7 @@ async def save_checklist(request: Request):
     db = SessionLocal()
 
     habits = db.query(Habit).filter(Habit.active == True).all()
-    today = date.today()
+    today = eastern_today()
     points_row = db.query(Points).first()
 
     for habit in habits:
@@ -157,7 +158,7 @@ async def save_checklist(request: Request):
                         status="pending",
                     )
                     db.add(notification)
-                    
+
             elif not was_checked and checkin.point_awarded:
                 old_transaction = db.query(PointTransaction).filter(
                     PointTransaction.id == checkin.point_transaction_id
@@ -240,7 +241,7 @@ def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_rewar
             "add_reward": add_reward,
             "editing_reward": editing_reward,
             "redemptions": redemptions,
-            "today": date.today().strftime("%A, %B %-d"),
+            "today": eastern_today().strftime("%A, %B %-d"),
         }
     )
 
@@ -288,7 +289,7 @@ async def toggle_checkin(request: Request):
 
     db = SessionLocal()
     habit = db.query(Habit).filter(Habit.id == habit_id).first()
-    today = date.today()
+    today = eastern_today()
     points_row = db.query(Points).first()
 
     checkin = db.query(DailyCheckin).filter(
@@ -370,7 +371,7 @@ def show_history(request: Request):
         context={
             "transactions": transactions,
             "points": points_row,
-            "today": date.today().strftime("%A, %B %-d"),
+            "today": eastern_today().strftime("%A, %B %-d"),
         }
     )
 

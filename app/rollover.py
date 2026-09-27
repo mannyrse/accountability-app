@@ -1,11 +1,12 @@
 from datetime import date
 from app.database import SessionLocal
 from app.models import Habit, DailyCheckin, PointTransaction, Points, DailyReport
+from app.timezone_utils import eastern_today
 
 
 def run_daily_rollover(for_date: date = None):
     if for_date is None:
-        for_date = date.today()
+        for_date = eastern_today()
 
     db = SessionLocal()
     points_row = db.query(Points).first()
