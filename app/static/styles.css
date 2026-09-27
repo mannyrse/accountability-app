@@ -409,3 +409,7 @@ details.redeemed-history[open] summary::before {
     color: var(--amber);
     display: inline-block;
 }
+
+.points-heading {
+    margin-bottom: 10px;
+}
