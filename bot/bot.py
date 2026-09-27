@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from app.database import SessionLocal
-from app.models import Habit, Points, Reward, PointTransaction, PendingNotification, DailyReport
+from app.models import Habit, Points, Reward, PointTransaction, PendingNotification, DailyReport, Redemption
 from datetime import datetime, timezone
 
 load_dotenv()
@@ -73,6 +73,14 @@ async def redeem(interaction: discord.Interaction, reward_id: int):
         )
         db.add(transaction)
         points_row.current_points -= reward.point_cost
+
+        redemption = Redemption(
+            reward_name=reward.name,
+            point_cost=reward.point_cost,
+            completed=False,
+        )
+        db.add(redemption)
+
         db.commit()
         message = f"Redeemed **{reward.name}** for {reward.point_cost} points! Remaining: {points_row.current_points}"
     else:
