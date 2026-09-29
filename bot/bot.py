@@ -92,30 +92,10 @@ async def redeem(interaction: discord.Interaction, reward_id: int):
     db.close()
     await interaction.response.send_message(message)
 
-
-SLOT_SYMBOLS = ["🫩", "🍙", "🔔", "⭐", "💎", "7️⃣"]
-
-
-def build_reels(won: bool):
-    """Pick the final reels so they always match the already-decided outcome."""
-    if won:
-        s = random.choice(SLOT_SYMBOLS)
-        return [s, s, s]
-    if random.random() < 0.5:
-        # Near miss: first two match, third doesn't (max suspense on the last reel)
-        s = random.choice(SLOT_SYMBOLS)
-        other = random.choice([x for x in SLOT_SYMBOLS if x != s])
-        return [s, s, other]
-    return random.sample(SLOT_SYMBOLS, 3)  # three different symbols
-
-
-def render_reels(final, locked: int):
-    """Locked reels show their final symbol; the rest show a random 'spinning' symbol."""
-    shown = [final[i] if i < locked else random.choice(SLOT_SYMBOLS) for i in range(3)]
-    return "# " + "  ┃  ".join(shown)
-
-
-@bot.tree.command(name="gamble", description="Pull the lever. Double or nothing on however many points you dare.")
+@bot.tree.command(
+    name="gamble",
+    description="Let's go gambling! 50/50 chance to win or lose your wager."
+)
 @app_commands.describe(amount="How many points to wager")
 async def gamble(interaction: discord.Interaction, amount: app_commands.Range[int, 1]):
     await interaction.response.defer()
@@ -126,67 +106,43 @@ async def gamble(interaction: discord.Interaction, amount: app_commands.Range[in
     if amount > points_row.current_points:
         balance = points_row.current_points
         db.close()
+
         await interaction.followup.send(
             f"You only have **{balance}** points. You can't wager {amount}.",
             ephemeral=True,
         )
         return
 
-    won = random.random() < 0.5
+    # Simple 50/50
+    won = random.choice([True, False])
 
     if won:
-        transaction = PointTransaction(amount=amount, type="gamble", reason=f"Gamble won ({amount})")
         points_row.current_points += amount
+        transaction = PointTransaction(
+            amount=amount,
+            type="gamble",
+            reason=f"Gamble won ({amount})",
+        )
+        result = f"🟢 **You won!** You gained **{amount}** points."
     else:
-        transaction = PointTransaction(amount=-amount, type="gamble", reason=f"Gamble lost ({amount})")
         points_row.current_points -= amount
+        transaction = PointTransaction(
+            amount=-amount,
+            type="gamble",
+            reason=f"Gamble lost ({amount})",
+        )
+        result = f"🔴 **You lost!** You lost **{amount}** points. lol"
 
     db.add(transaction)
     db.commit()
+
     new_balance = points_row.current_points
     db.close()
 
-    final = build_reels(won)
-    title = f"🎰 {interaction.user.display_name} bets {amount} points"
-
-    embed = discord.Embed(
-        title=title,
-        description=render_reels(final, locked=0) + "\n\n*Pulling the lever...*",
-        color=discord.Color.gold(),
+    await interaction.followup.send(
+        f"{result}\n\n"
+        f"Balance: **{new_balance}** points."
     )
-    await interaction.followup.send(embed=embed)
-
-    try:
-        for _ in range(2):
-            await asyncio.sleep(1.0)
-            embed.description = render_reels(final, locked=0) + "\n\n*Spinning...*"
-            await interaction.edit_original_response(embed=embed)
-
-        for locked in (1, 2, 3):
-            await asyncio.sleep(1.0 if locked < 3 else 1.8)
-            embed.description = render_reels(final, locked=locked)
-            if locked == 2:
-                embed.description += "\n\n*One more...*"
-            await interaction.edit_original_response(embed=embed)
-
-        await asyncio.sleep(0.8)
-
-        reels = "# " + "  ┃  ".join(final)
-        if won:
-            result = discord.Embed(
-                title="🟢 JACKPOT. DOUBLED.",
-                description=f"{reels}\n\n**+{amount}** points.\nNew balance: **{new_balance}**",
-                color=discord.Color.green(),
-            )
-        else:
-            result = discord.Embed(
-                title="🔴 NO MATCH. THE HOUSE WINS.",
-                description=f"{reels}\n\n**{amount}** points, gone.\nNew balance: **{new_balance}**",
-                color=discord.Color.red(),
-            )
-        await interaction.edit_original_response(embed=result)
-    except discord.HTTPException:
-        pass
 
 
 @tasks.loop(seconds=30)
