@@ -118,20 +118,20 @@ def render_reels(final, locked: int):
 @bot.tree.command(name="gamble", description="Pull the lever. Double or nothing on however many points you dare.")
 @app_commands.describe(amount="How many points to wager")
 async def gamble(interaction: discord.Interaction, amount: app_commands.Range[int, 1]):
+    await interaction.response.defer()
+
     db = SessionLocal()
     points_row = db.query(Points).first()
 
     if amount > points_row.current_points:
         balance = points_row.current_points
         db.close()
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"You only have **{balance}** points. You can't wager {amount}.",
             ephemeral=True,
         )
         return
 
-    # Decide and commit the outcome BEFORE animating, so a dropped
-    # connection mid-animation can't leave the result unresolved.
     won = random.random() < 0.5
 
     if won:
@@ -154,16 +154,14 @@ async def gamble(interaction: discord.Interaction, amount: app_commands.Range[in
         description=render_reels(final, locked=0) + "\n\n*Pulling the lever...*",
         color=discord.Color.gold(),
     )
-    await interaction.response.send_message(embed=embed)
+    await interaction.followup.send(embed=embed)
 
     try:
-        # Two frames of everything spinning
         for _ in range(2):
             await asyncio.sleep(1.0)
             embed.description = render_reels(final, locked=0) + "\n\n*Spinning...*"
             await interaction.edit_original_response(embed=embed)
 
-        # Reels lock in one at a time, with a longer pause before the last one
         for locked in (1, 2, 3):
             await asyncio.sleep(1.0 if locked < 3 else 1.8)
             embed.description = render_reels(final, locked=locked)
@@ -188,7 +186,6 @@ async def gamble(interaction: discord.Interaction, amount: app_commands.Range[in
             )
         await interaction.edit_original_response(embed=result)
     except discord.HTTPException:
-        # Animation failed (rate limit, etc.), but the outcome is already saved.
         pass
 
 
