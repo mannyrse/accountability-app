@@ -1,5 +1,4 @@
 import os
-import asyncio
 import random
 import discord
 from discord import app_commands
@@ -98,52 +97,72 @@ async def redeem(interaction: discord.Interaction, reward_id: int):
 )
 @app_commands.describe(amount="How many points to wager")
 async def gamble(interaction: discord.Interaction, amount: app_commands.Range[int, 1]):
+
     await interaction.response.defer()
 
     db = SessionLocal()
-    points_row = db.query(Points).first()
 
-    if amount > points_row.current_points:
-        balance = points_row.current_points
-        db.close()
+    try:
+        points_row = db.query(Points).first()
+
+        if points_row is None:
+
+            await interaction.followup.send(
+                "No points account exists yet.",
+                ephemeral=True,
+            )
+            return
+
+
+        if amount > points_row.current_points:
+            balance = points_row.current_points
+
+            await interaction.followup.send(
+                f"You only have **{balance}** points. You can't wager {amount}.",
+                ephemeral=True,
+            )
+            return
+
+        # Simple 50/50
+        won = random.choice([True, False])
+        if won:
+            points_row.current_points += amount
+            result = f"🟢 **You won!** You gained **{amount}** points."
+        else:
+            points_row.current_points -= amount
+            result = f"🔴 **You lost!** You lost **{amount}** points. lol"
+
+
+        # Force SQLAlchemy to send the UPDATE to PostgreSQL
+        db.flush()
+
+        # Commit the transaction
+        db.commit()
+
+        new_balance = points_row.current_points
 
         await interaction.followup.send(
-            f"You only have **{balance}** points. You can't wager {amount}.",
-            ephemeral=True,
+            f"{result}\n\n"
+            f"Balance: **{new_balance}** points."
         )
-        return
 
-    # Simple 50/50
-    won = random.choice([True, False])
 
-    if won:
-        points_row.current_points += amount
-        transaction = PointTransaction(
-            amount=amount,
-            type="gamble",
-            reason=f"Gamble won ({amount})",
-        )
-        result = f"🟢 **You won!** You gained **{amount}** points."
-    else:
-        points_row.current_points -= amount
-        transaction = PointTransaction(
-            amount=-amount,
-            type="gamble",
-            reason=f"Gamble lost ({amount})",
-        )
-        result = f"🔴 **You lost!** You lost **{amount}** points. lol"
+    except Exception as e:
+        print(f"GAMBLE ERROR: {type(e).__name__}: {e}")
 
-    db.add(transaction)
-    db.commit()
+        db.rollback()
 
-    new_balance = points_row.current_points
-    db.close()
+        try:
+            await interaction.followup.send(
+                "Something went wrong processing the gamble.",
+                ephemeral=True,
+            )
+        except discord.HTTPException:
+            pass
 
-    await interaction.followup.send(
-        f"{result}\n\n"
-        f"Balance: **{new_balance}** points."
-    )
-
+    finally:
+        db.close()
+        print("GAMBLE: database closed")
 
 @tasks.loop(seconds=30)
 async def check_pending_notifications():
