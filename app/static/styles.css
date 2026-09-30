@@ -46,11 +46,18 @@ body {
     font-weight: 600;
     text-decoration: none;
     color: var(--muted);
+    transition: color 0.2s ease;
 }
 
 .tabs a.active {
     background: var(--card);
     color: var(--text);
+}
+
+@media (hover: hover) {
+    .tabs a:not(.active):hover {
+        color: var(--text);
+    }
 }
 
 .balance-card {
@@ -105,6 +112,20 @@ h2 {
     text-decoration: none;
     font-size: 1rem;
     line-height: 1;
+    /* Ring matches the fill at rest; on hover the fill drops out and the ring stays */
+    box-shadow: inset 0 0 0 1.5px var(--text);
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.1s ease;
+}
+
+.add-btn:active {
+    transform: scale(0.96);
+}
+
+@media (hover: hover) {
+    .add-btn:hover {
+        background: var(--card);
+        color: var(--text);
+    }
 }
 
 /* Checklist page: habit rows */
@@ -115,12 +136,20 @@ h2 {
     overflow: hidden;
 }
 
+/* Each row type sets an accent color that the checkbox hover reads from */
 .row {
+    --accent: var(--good);
+    --accent-tint: var(--good-tint);
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 13px 14px;
     border-bottom: 1px solid var(--border);
+}
+
+.row.bad {
+    --accent: var(--bad);
+    --accent-tint: var(--bad-tint);
 }
 
 .row:last-child {
@@ -137,6 +166,11 @@ h2 {
     flex-shrink: 0;
     cursor: pointer;
     position: relative;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.1s ease, filter 0.18s ease;
+}
+
+.check:active {
+    transform: scale(0.9);
 }
 
 .check:checked {
@@ -161,6 +195,18 @@ h2 {
 
 .row.bad .check:checked {
     background: var(--bad);
+}
+
+@media (hover: hover) {
+
+    /* Unchecked: soft tint of its own color. Checked: slightly darker. */
+    .row .check:not(:checked):hover {
+        background: var(--accent-tint);
+    }
+
+    .row .check:checked:hover {
+        filter: brightness(0.92);
+    }
 }
 
 .row .name {
@@ -193,6 +239,17 @@ h2 {
     text-decoration: none;
     font-size: 0.85rem;
     padding: 2px;
+    transition: color 0.18s ease;
+}
+
+@media (hover: hover) {
+    .row .icon-link:hover {
+        color: var(--text);
+    }
+
+    .row .icon-link[href^="/delete-"]:hover {
+        color: var(--bad);
+    }
 }
 
 /* Shared: inline add/edit forms */
@@ -230,6 +287,19 @@ h2 {
     padding: 9px 16px;
     font-size: 0.85rem;
     cursor: pointer;
+    box-shadow: inset 0 0 0 1.5px var(--text);
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.1s ease;
+}
+
+.inline-form button:active {
+    transform: scale(0.96);
+}
+
+@media (hover: hover) {
+    .inline-form button:hover {
+        background: var(--card);
+        color: var(--text);
+    }
 }
 
 .cancel-link {
@@ -239,6 +309,13 @@ h2 {
     color: var(--bad);
     margin-bottom: 14px;
     text-decoration: none;
+    transition: opacity 0.18s ease;
+}
+
+@media (hover: hover) {
+    .cancel-link:hover {
+        opacity: 0.65;
+    }
 }
 
 /* Checklist page: sticky save button
@@ -316,6 +393,17 @@ h2 {
     text-decoration: none;
     font-size: 0.8rem;
     margin-right: 12px;
+    transition: color 0.18s ease;
+}
+
+@media (hover: hover) {
+    .reward-actions a:hover {
+        color: var(--text);
+    }
+
+    .reward-actions a[href^="/delete-"]:hover {
+        color: var(--bad);
+    }
 }
 
 .redeem-btn {
@@ -328,12 +416,26 @@ h2 {
     padding: 8px 18px;
     font-size: 0.85rem;
     cursor: pointer;
+    box-shadow: inset 0 0 0 1.5px var(--amber);
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.1s ease;
 }
 
 .redeem-btn:disabled {
     background: var(--border);
     color: var(--muted);
     cursor: not-allowed;
+    box-shadow: none;
+}
+
+.redeem-btn:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+@media (hover: hover) {
+    .redeem-btn:hover:not(:disabled) {
+        background: var(--card);
+        color: var(--amber);
+    }
 }
 
 .redemption-name.completed {
@@ -352,12 +454,25 @@ h2 {
     text-decoration: none;
     border: 1.5px solid var(--border);
     color: var(--muted);
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 
 .redemption-toggle.completed {
     background: var(--good-tint);
     border-color: var(--good);
     color: var(--good);
+}
+
+@media (hover: hover) {
+    .redemption-toggle:hover {
+        border-color: var(--good);
+        color: var(--good);
+        background: var(--good-tint);
+    }
+
+    .redemption-toggle.completed:hover {
+        background: var(--card);
+    }
 }
 
 .redemption-name.completed {
@@ -372,6 +487,7 @@ details.redeemed-history summary {
     color: var(--muted);
     padding: 10px 0;
     list-style: none;
+    transition: color 0.18s ease;
 }
 
 details.redeemed-history summary::-webkit-details-marker {
@@ -384,6 +500,12 @@ details.redeemed-history summary::before {
 
 details.redeemed-history[open] summary::before {
     content: "▾ ";
+}
+
+@media (hover: hover) {
+    details.redeemed-history summary:hover {
+        color: var(--text);
+    }
 }
 
 .input-narrow {
@@ -420,6 +542,11 @@ details.redeemed-history[open] summary::before {
     --virtue-tint: #E8EFFD;
 }
 
+.row.virtue {
+    --accent: var(--virtue);
+    --accent-tint: var(--virtue-tint);
+}
+
 .row.virtue .check {
     border-color: var(--virtue);
 }
@@ -440,4 +567,14 @@ details.redeemed-history[open] summary::before {
     font-weight: 600;
     color: var(--muted);
     margin-left: 4px;
+}
+
+/* Respect the "reduce motion" setting */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        transition: none !important;
+    }
 }
