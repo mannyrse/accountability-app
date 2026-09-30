@@ -413,3 +413,31 @@ details.redeemed-history[open] summary::before {
 .points-heading {
     margin-bottom: 10px;
 }
+
+/* Virtues: a third accent color (violet) alongside good = green, bad = red, points = amber */
+:root {
+    --virtue: #2563EB;
+    --virtue-tint: #E8EFFD;
+}
+
+.row.virtue .check {
+    border-color: var(--virtue);
+}
+
+.row.virtue .check:checked {
+    background: var(--virtue);
+}
+
+/* The at-risk override guards against checklist.js toggling that class on virtue tags */
+.row.virtue .tag,
+.row.virtue .tag.at-risk {
+    background: var(--virtue-tint);
+    color: var(--virtue);
+}
+
+.count-note {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-left: 4px;
+}

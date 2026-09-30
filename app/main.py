@@ -19,13 +19,26 @@ from app.timezone_utils import eastern_today
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    asyncio.create_task(bot.start(TOKEN))
+    # asyncio.create_task(bot.start(TOKEN))
     yield
 
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+
+
+# Virtue helpers (virtues are habits with type == "virtue")
+
+MAX_ACTIVE_VIRTUES = 3
+
+
+def clamp_virtue_points(value: int) -> int:
+    return max(1, min(3, value))
+
+
+def active_virtue_count(db) -> int:
+    return db.query(Habit).filter(Habit.type == "virtue", Habit.active == True).count()
 
 
 @app.post("/add-habit")
@@ -35,6 +48,12 @@ def create_habit(
     point_value: int = Form(1),
 ):
     db = SessionLocal()
+    if type == "virtue":
+        if active_virtue_count(db) >= MAX_ACTIVE_VIRTUES:
+            db.close()
+            return RedirectResponse(url="/", status_code=303)
+        point_value = clamp_virtue_points(point_value)
+
     new_habit = Habit(name=name, type=type, point_value=point_value)
     db.add(new_habit)
     db.commit()
@@ -95,6 +114,14 @@ def edit_habit(
 ):
     db = SessionLocal()
     habit = db.query(Habit).filter(Habit.id == habit_id).first()
+
+    if type == "virtue":
+        # Don't allow converting a habit into a 4th virtue.
+        if habit.type != "virtue" and active_virtue_count(db) >= MAX_ACTIVE_VIRTUES:
+            db.close()
+            return RedirectResponse(url="/", status_code=303)
+        point_value = clamp_virtue_points(point_value)
+
     habit.name = name
     habit.type = type
     habit.point_value = point_value
@@ -352,6 +379,35 @@ async def toggle_checkin(request: Request):
             ).first()
             if pending:
                 pending.status = "cancelled"
+
+    elif habit.type == "virtue":
+        if was_checked and not checkin.point_awarded:
+            # Subtract, but never below zero. Only log what was actually removed.
+            deducted = min(habit.point_value, max(points_row.current_points, 0))
+            if deducted > 0:
+                transaction = PointTransaction(
+                    amount=-deducted,
+                    type="virtue",
+                    reason=f"Virtue: {habit.name}",
+                )
+                db.add(transaction)
+                db.flush()
+                checkin.point_awarded = True
+                checkin.point_transaction_id = transaction.id
+                points_row.current_points -= deducted
+                # lifetime_points is untouched: it only ever increases.
+
+        elif not was_checked and checkin.point_awarded:
+            # Reverse exactly what THIS checkin removed (read from its own
+            # transaction), never the habit's current point_value.
+            old_transaction = db.query(PointTransaction).filter(
+                PointTransaction.id == checkin.point_transaction_id
+            ).first()
+            checkin.point_awarded = False
+            checkin.point_transaction_id = None
+            if old_transaction:
+                points_row.current_points += -old_transaction.amount
+                db.delete(old_transaction)
 
     db.commit()
     current = points_row.current_points
