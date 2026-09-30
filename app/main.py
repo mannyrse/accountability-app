@@ -19,7 +19,7 @@ from app.timezone_utils import eastern_today
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # asyncio.create_task(bot.start(TOKEN))
+    asyncio.create_task(bot.start(TOKEN))
     yield
 
 
