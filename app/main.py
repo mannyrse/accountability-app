@@ -304,6 +304,8 @@ def toggle_redemption(redemption_id: int):
     db = SessionLocal()
     redemption = db.query(Redemption).filter(Redemption.id == redemption_id).first()
     redemption.completed = not redemption.completed
+    if not redemption.completed:
+        redemption.completion_announced = False
     db.commit()
     db.close()
     return RedirectResponse(url="/rewards", status_code=303)

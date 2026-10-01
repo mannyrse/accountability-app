@@ -200,6 +200,89 @@ async def check_daily_reports():
     db.commit()
     db.close()
 
+def _ts(dt) -> int:
+    # Naive-UTC datetime from the DB -> unix timestamp for Discord's <t:...> markup,
+    # which each person sees in their own timezone.
+    return int(dt.replace(tzinfo=timezone.utc).timestamp())
+
+
+@bot.tree.command(name="redeemed", description="See rewards that have been redeemed")
+async def redeemed(interaction: discord.Interaction):
+    db = SessionLocal()
+    pending = (
+        db.query(Redemption)
+        .filter(Redemption.completed == False)
+        .order_by(Redemption.redeemed_at.asc())
+        .all()
+    )
+    done = (
+        db.query(Redemption)
+        .filter(Redemption.completed == True)
+        .order_by(Redemption.redeemed_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    if not pending and not done:
+        db.close()
+        await interaction.response.send_message("Nothing has been redeemed yet.")
+        return
+
+    message = "**⏳ Waiting to be claimed**\n"
+    if pending:
+        for r in pending:
+            message += f"• {r.reward_name} — {r.point_cost} pts (redeemed <t:{_ts(r.redeemed_at)}:d>)\n"
+    else:
+        message += "_Nothing waiting._\n"
+
+    if done:
+        message += "\n**✅ Completed (last 10)**\n"
+        for r in done:
+            message += f"• {r.reward_name} — {r.point_cost} pts (redeemed <t:{_ts(r.redeemed_at)}:d>)\n"
+
+    db.close()
+    await interaction.response.send_message(message)
+
+
+@tasks.loop(seconds=30)
+async def check_completed_redemptions():
+    db = SessionLocal()
+    try:
+        due = (
+            db.query(Redemption)
+            .filter(Redemption.completed == True, Redemption.completion_announced == False)
+            .order_by(Redemption.redeemed_at.asc())
+            .all()
+        )
+        if not due:
+            return
+
+        channel = bot.get_channel(int(os.getenv("DISCORD_CHANNEL_ID")))
+        if channel is None:
+            return  # channel cache not ready yet; try again next loop
+
+        pending = (
+            db.query(Redemption)
+            .filter(Redemption.completed == False)
+            .order_by(Redemption.redeemed_at.asc())
+            .all()
+        )
+        if pending:
+            waiting = "**Still waiting to be claimed:**\n" + "\n".join(f"• {p.reward_name}" for p in pending)
+        else:
+            waiting = "Nothing else is waiting to be claimed. 🎉"
+
+        for r in due:
+            await channel.send(f"✅ **{r.reward_name}** has been completed!\n\n{waiting}")
+            r.completion_announced = True
+        db.commit()
+    except Exception as e:
+        # Without this, one failure would silently stop the loop for good.
+        print(f"REDEMPTION NOTIFY ERROR: {type(e).__name__}: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
 
 @bot.event
 async def on_ready():
@@ -208,6 +291,8 @@ async def on_ready():
         check_pending_notifications.start()
     if not check_daily_reports.is_running():
         check_daily_reports.start()
+    if not check_completed_redemptions.is_running():
+        check_completed_redemptions.start()
 
 
 @bot.event

@@ -76,4 +76,5 @@ class Redemption(Base):
     reward_name = Column(Text, nullable=False)
     point_cost = Column(Integer, nullable=False)
     completed = Column(Boolean, nullable=False, default=False)
+    completion_announced = Column(Boolean, nullable=False, default=False)
     redeemed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
