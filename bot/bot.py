@@ -219,7 +219,7 @@ async def redeemed(interaction: discord.Interaction):
         db.query(Redemption)
         .filter(Redemption.completed == True)
         .order_by(Redemption.redeemed_at.desc())
-        .limit(10)
+        .limit(5)
         .all()
     )
 
@@ -236,7 +236,7 @@ async def redeemed(interaction: discord.Interaction):
         message += "_Nothing waiting._\n"
 
     if done:
-        message += "\n**✅ Completed (last 10)**\n"
+        message += "\n**✅ Completed (last 5)**\n"
         for r in done:
             message += f"• {r.reward_name} — {r.point_cost} pts (redeemed <t:{_ts(r.redeemed_at)}:d>)\n"
 
@@ -261,19 +261,8 @@ async def check_completed_redemptions():
         if channel is None:
             return  # channel cache not ready yet; try again next loop
 
-        pending = (
-            db.query(Redemption)
-            .filter(Redemption.completed == False)
-            .order_by(Redemption.redeemed_at.asc())
-            .all()
-        )
-        if pending:
-            waiting = "**Still waiting to be claimed:**\n" + "\n".join(f"• {p.reward_name}" for p in pending)
-        else:
-            waiting = "Nothing else is waiting to be claimed. 🎉"
-
         for r in due:
-            await channel.send(f"✅ **{r.reward_name}** has been completed!\n\n{waiting}")
+            await channel.send(f"✅ **{r.reward_name}** has been completed!")
             r.completion_announced = True
         db.commit()
     except Exception as e:
