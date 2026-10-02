@@ -192,7 +192,7 @@ async def save_checklist(request: Request):
                     PointTransaction.id == checkin.point_transaction_id
                 ).first()
                 if old_transaction:
-                    points_row.current_points -= old_transaction.amount
+                    points_row.current_points = max(0, points_row.current_points - old_transaction.amount)
                     points_row.lifetime_points -= old_transaction.amount
                     db.delete(old_transaction)
                 checkin.point_awarded = False
