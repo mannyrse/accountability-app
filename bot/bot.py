@@ -127,9 +127,11 @@ async def gamble(interaction: discord.Interaction, amount: app_commands.Range[in
         won = random.choice([True, False])
         if won:
             points_row.current_points += amount
+            db.add(PointTransaction(amount=amount, type="gamble", reason=f"Gamble won ({amount})"))
             result = f"🟢 **You won!** You gained **{amount}** points."
         else:
             points_row.current_points -= amount
+            db.add(PointTransaction(amount=-amount, type="gamble", reason=f"Gamble lost ({amount})"))
             result = f"🔴 **You lost!** You lost **{amount}** points. lol"
 
 

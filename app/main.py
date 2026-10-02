@@ -254,6 +254,13 @@ def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_rewar
     rewards = db.query(Reward).filter(Reward.active == True).order_by(Reward.point_cost.asc()).all()
     points_row = db.query(Points).first()
     redemptions = db.query(Redemption).order_by(Redemption.redeemed_at.desc()).limit(30).all()
+    gambles = (
+        db.query(PointTransaction)
+        .filter(PointTransaction.type == "gamble")
+        .order_by(PointTransaction.created_at.desc())
+        .limit(5)
+        .all()
+    )
 
     editing_reward = None
     if edit_reward_id is not None:
@@ -268,6 +275,7 @@ def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_rewar
             "add_reward": add_reward,
             "editing_reward": editing_reward,
             "redemptions": redemptions,
+            "gambles": gambles,
             "today": eastern_today().strftime("%A, %B %-d"),
         }
     )

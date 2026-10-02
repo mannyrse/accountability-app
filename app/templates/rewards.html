@@ -120,6 +120,18 @@
             {% endfor %}
         </details>
         {% endif %}
+
+        {% if gambles %}
+        <h2>Recent gambles</h2>
+        <div class="list">
+            {% for g in gambles %}
+            <div class="row">
+                <span class="name">{{ g.reason }}</span>
+                <span class="tag">{% if g.amount > 0 %}+{% endif %}{{ g.amount }} pts</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 </body>
 
