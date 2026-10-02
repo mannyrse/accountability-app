@@ -91,7 +91,7 @@
             <div class="reward-top">
                 <div>
                     <div class="reward-name">{{ r.reward_name }}</div>
-                    <div class="reward-desc">{{ r.redeemed_at.strftime('%b %d, %I:%M %p') }}</div>
+                    <div class="reward-desc">{{ (r.redeemed_at | eastern).strftime('%b %d, %I:%M %p') }}</div>
                 </div>
                 <div class="reward-cost">{{ r.point_cost }} pts</div>
             </div>
@@ -109,7 +109,7 @@
                 <div class="reward-top">
                     <div>
                         <div class="reward-name completed">{{ r.reward_name }}</div>
-                        <div class="reward-desc">{{ r.redeemed_at.strftime('%b %d, %I:%M %p') }}</div>
+                        <div class="reward-desc">{{ (r.redeemed_at | eastern).strftime('%b %d, %I:%M %p') }}</div>
                     </div>
                     <div class="reward-cost">{{ r.point_cost }} pts</div>
                 </div>

@@ -29,6 +29,16 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 
+def to_eastern(dt):
+    # DB stores naive UTC datetimes; convert to Eastern for display
+    if dt.tzinfo is None:
+        dt = pytz.utc.localize(dt)
+    return dt.astimezone(pytz.timezone("America/New_York"))
+
+
+templates.env.filters["eastern"] = to_eastern
+
+
 # Virtue helpers (virtues are habits with type == "virtue")
 
 MAX_ACTIVE_VIRTUES = 3
@@ -126,86 +136,6 @@ def edit_habit(
     habit.name = name
     habit.type = type
     habit.point_value = point_value
-    db.commit()
-    db.close()
-    return RedirectResponse(url="/", status_code=303)
-
-
-@app.post("/save-checklist")
-async def save_checklist(request: Request):
-    form_data = await request.form()
-    db = SessionLocal()
-
-    habits = db.query(Habit).filter(Habit.active == True).all()
-    today = eastern_today()
-    points_row = db.query(Points).first()
-
-    for habit in habits:
-        field_name = f"habit_{habit.id}"
-        was_checked = field_name in form_data
-
-        checkin = db.query(DailyCheckin).filter(
-            DailyCheckin.habit_id == habit.id,
-            DailyCheckin.date == today
-        ).first()
-
-        if not checkin:
-            checkin = DailyCheckin(habit_id=habit.id, date=today, completed=was_checked)
-            db.add(checkin)
-            db.flush()
-        else:
-            checkin.completed = was_checked
-
-        if habit.type == "bad":
-            if was_checked and not checkin.point_awarded:
-                transaction = PointTransaction(
-                    amount=habit.point_value,
-                    type="failure",
-                    reason=f"Did {habit.name}",
-                )
-                db.add(transaction)
-                db.flush()
-                checkin.point_awarded = True
-                checkin.point_transaction_id = transaction.id
-                points_row.current_points += habit.point_value
-                points_row.lifetime_points += habit.point_value
-
-                existing_notification = db.query(PendingNotification).filter(
-                    PendingNotification.habit_id == habit.id,
-                    PendingNotification.date == today,
-                ).first()
-
-                if existing_notification:
-                    existing_notification.status = "pending"
-                    existing_notification.scheduled_at = datetime.now(timezone.utc) + timedelta(minutes=1)
-                else:
-                    notification = PendingNotification(
-                        habit_id=habit.id,
-                        date=today,
-                        scheduled_at=datetime.now(timezone.utc) + timedelta(minutes=1),
-                        status="pending",
-                    )
-                    db.add(notification)
-
-            elif not was_checked and checkin.point_awarded:
-                old_transaction = db.query(PointTransaction).filter(
-                    PointTransaction.id == checkin.point_transaction_id
-                ).first()
-                if old_transaction:
-                    points_row.current_points = max(0, points_row.current_points - old_transaction.amount)
-                    points_row.lifetime_points -= old_transaction.amount
-                    db.delete(old_transaction)
-                checkin.point_awarded = False
-                checkin.point_transaction_id = None
-
-                pending = db.query(PendingNotification).filter(
-                    PendingNotification.habit_id == habit.id,
-                    PendingNotification.date == today,
-                    PendingNotification.status == "pending",
-                ).first()
-                if pending:
-                    pending.status = "cancelled"
-
     db.commit()
     db.close()
     return RedirectResponse(url="/", status_code=303)
@@ -387,7 +317,7 @@ async def toggle_checkin(request: Request):
                 PointTransaction.id == checkin.point_transaction_id
             ).first()
             if old_transaction:
-                points_row.current_points -= old_transaction.amount
+                points_row.current_points = max(0, points_row.current_points - old_transaction.amount)
                 points_row.lifetime_points -= old_transaction.amount
                 db.delete(old_transaction)
             checkin.point_awarded = False
