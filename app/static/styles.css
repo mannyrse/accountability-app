@@ -508,6 +508,40 @@ details.redeemed-history[open] summary::before {
     }
 }
 
+
+/* Rewards page: recent gambles */
+.row.gamble .gamble-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.row.gamble.win .gamble-icon,
+.row.gamble.win .tag {
+    background: var(--good-tint);
+    color: var(--good);
+}
+
+.row.gamble.loss .gamble-icon,
+.row.gamble.loss .tag {
+    background: var(--bad-tint);
+    color: var(--bad);
+}
+
+.row.gamble .gamble-balance {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 1px;
+}
+
 .input-narrow {
     max-width: 70px;
 }

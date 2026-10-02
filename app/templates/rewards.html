@@ -125,9 +125,11 @@
         <h2>Recent gambles</h2>
         <div class="list">
             {% for g in gambles %}
-            <div class="row">
-                <span class="name">{{ g.reason }}</span>
-                <span class="tag">{% if g.amount > 0 %}+{% endif %}{{ g.amount }} pts</span>
+            <div class="row gamble {% if g.amount > 0 %}win{% else %}loss{% endif %}">
+                <span class="gamble-icon">{% if g.amount > 0 %}▲{% else %}▼{% endif %}</span>
+                <span class="name">{% if g.amount > 0 %}Won{% else %}Lost{% endif %} {{ g.amount | abs }}
+                    <span class="gamble-balance">Balance: {{ g.balance_after }}</span>
+                </span> <span class="tag">{% if g.amount > 0 %}+{% endif %}{{ g.amount }} pts</span>
             </div>
             {% endfor %}
         </div>

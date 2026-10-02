@@ -15,6 +15,7 @@ from apscheduler.triggers.cron import CronTrigger
 import pytz
 from fastapi.responses import JSONResponse
 from app.timezone_utils import eastern_today
+from sqlalchemy import func
 
 
 @asynccontextmanager
@@ -254,13 +255,23 @@ def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_rewar
     rewards = db.query(Reward).filter(Reward.active == True).order_by(Reward.point_cost.asc()).all()
     points_row = db.query(Points).first()
     redemptions = db.query(Redemption).order_by(Redemption.redeemed_at.desc()).limit(30).all()
-    gambles = (
+    gamble_rows = (
         db.query(PointTransaction)
         .filter(PointTransaction.type == "gamble")
         .order_by(PointTransaction.created_at.desc())
         .limit(5)
         .all()
     )
+    gambles = []
+    for g in gamble_rows:
+        # Everything that changed your points after this gamble
+        newer = db.query(func.coalesce(func.sum(PointTransaction.amount), 0)).filter(
+            PointTransaction.created_at > g.created_at
+        ).scalar()
+        gambles.append({
+            "amount": g.amount,
+            "balance_after": points_row.current_points - newer,
+        })
 
     editing_reward = None
     if edit_reward_id is not None:
