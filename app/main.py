@@ -367,26 +367,6 @@ async def toggle_checkin(request: Request):
 
     return JSONResponse({"current_points": current, "lifetime_points": lifetime})
 
-@app.get("/history")
-def show_history(request: Request):
-    db = SessionLocal()
-    transactions = db.query(PointTransaction).order_by(PointTransaction.created_at.desc()).limit(100).all()
-    points_row = db.query(Points).first()
-    db.close()
-    return templates.TemplateResponse(
-        request=request, name="history.html",
-        context={
-            "transactions": transactions,
-            "points": points_row,
-            "today": eastern_today().strftime("%A, %B %-d"),
-        }
-    )
-
-@app.get("/test-rollover")
-def test_rollover():
-    run_daily_rollover()
-    return {"status": "rollover ran"}
-
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
