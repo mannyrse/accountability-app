@@ -612,3 +612,201 @@ details.redeemed-history[open] summary::before {
         transition: none !important;
     }
 }
+
+/* Login page */
+.login-wrap {
+    text-align: center;
+    padding-top: 18vh;
+}
+
+.login-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0 0 6px;
+}
+
+.login-sub {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0 0 24px;
+}
+
+.login-btn {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+    background: var(--text);
+    color: var(--card);
+    border-radius: 12px;
+    padding: 12px 22px;
+    box-shadow: inset 0 0 0 1.5px var(--text);
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.1s ease;
+}
+
+.login-btn:active {
+    transform: scale(0.96);
+}
+
+@media (hover: hover) {
+    .login-btn:hover {
+        background: var(--card);
+        color: var(--text);
+    }
+}
+
+.login-error {
+    color: var(--bad);
+    font-size: 0.85rem;
+    margin-top: 16px;
+}
+
+/* Friends page */
+.friend-rank {
+    width: 22px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+
+.row.friend.me {
+    background: var(--amber-tint);
+}
+
+.you-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: var(--card);
+    color: var(--muted);
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-left: 6px;
+}
+
+.friend-points {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.2;
+}
+
+.friend-current {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--amber);
+}
+
+.friend-lifetime {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.friends-footer {
+    text-align: center;
+    font-size: 0.8rem;
+    margin-top: 16px;
+}
+
+/* Greeting on the Today page */
+.greeting {
+    margin: 0;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Friends page: expandable cards */
+details.friend-card+details.friend-card {
+    border-top: 1px solid var(--border);
+}
+
+details.friend-card>summary.row {
+    border-bottom: none;
+    cursor: pointer;
+    list-style: none;
+    transition: background-color 0.15s ease;
+}
+
+details.friend-card>summary::-webkit-details-marker {
+    display: none;
+}
+
+details.friend-card>summary::after {
+    content: "▸";
+    color: var(--muted);
+    font-size: 0.8rem;
+    transition: transform 0.18s ease;
+}
+
+details.friend-card[open]>summary::after {
+    transform: rotate(90deg);
+}
+
+@media (hover: hover) {
+    details.friend-card>summary.row:not(.me):hover {
+        background: var(--bg);
+    }
+}
+
+.friend-habits {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 4px 0 8px;
+}
+
+.friend-habits .row {
+    border-bottom: none;
+    padding: 7px 14px 7px 20px;
+}
+
+.friend-habits .row .name {
+    font-size: 0.85rem;
+}
+
+.friend-group-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 14px 2px 20px;
+}
+
+.friend-empty {
+    margin: 0;
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+/* Read-only version of the checklist circle */
+.status-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    flex-shrink: 0;
+    position: relative;
+}
+
+.status-dot.on {
+    background: var(--accent);
+}
+
+.status-dot.on::after {
+    content: "✓";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+}

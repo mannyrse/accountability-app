@@ -9,3 +9,5 @@ discord.py
 apscheduler
 python-multipart
 pytz
+itsdangerous
+httpx

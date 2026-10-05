@@ -15,11 +15,13 @@
     {% set virtue_count = checklist | selectattr("habit.type", "equalto", "virtue") | list | length %}
 
     <div class="app">
+        <p class="greeting">Hello, {{ user.username }}</p>
         <p class="today-date">{{ today }}</p>
 
         <div class="tabs">
             <a href="/" class="active">Today</a>
             <a href="/rewards">Rewards</a>
+            <a href="/friends">Friends</a>
         </div>
 
         <h2 class="points-heading">Points</h2>

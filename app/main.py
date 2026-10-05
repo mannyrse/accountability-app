@@ -1,8 +1,11 @@
-from fastapi import FastAPI, Request, Form
+import os
+from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
+from starlette.middleware.sessions import SessionMiddleware
 from app.database import SessionLocal
-from app.models import Habit, DailyCheckin, Points, PointTransaction, Reward, PendingNotification, Redemption
+from app.models import Habit, DailyCheckin, Points, PointTransaction, Reward, PendingNotification, Redemption, User
+from app.auth import router as auth_router, NotLoggedIn, get_current_user
 from datetime import date, timedelta, datetime, timezone
 from app.rollover import run_daily_rollover
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -25,8 +28,21 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET"),
+    max_age=60 * 60 * 24 * 30,
+    same_site="lax",
+    https_only=bool(os.getenv("RENDER")),
+)
+app.include_router(auth_router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+
+
+@app.exception_handler(NotLoggedIn)
+async def not_logged_in_handler(request: Request, exc: NotLoggedIn):
+    return RedirectResponse(url="/login", status_code=303)
 
 
 def to_eastern(dt):
@@ -39,8 +55,9 @@ def to_eastern(dt):
 templates.env.filters["eastern"] = to_eastern
 
 
-# Virtue helpers (virtues are habits with type == "virtue")
+# Helpers
 
+VALID_HABIT_TYPES = ("good", "bad", "virtue")
 MAX_ACTIVE_VIRTUES = 3
 
 
@@ -48,8 +65,29 @@ def clamp_virtue_points(value: int) -> int:
     return max(1, min(3, value))
 
 
-def active_virtue_count(db) -> int:
-    return db.query(Habit).filter(Habit.type == "virtue", Habit.active == True).count()
+def active_virtue_count(db, user: User) -> int:
+    return db.query(Habit).filter(
+        Habit.user_id == user.id, Habit.type == "virtue", Habit.active == True
+    ).count()
+
+
+def get_owned(db, model, item_id, user: User):
+    """Fetch a row only if it belongs to this user; otherwise 404 (and close the session)."""
+    item = db.query(model).filter(model.id == item_id, model.user_id == user.id).first()
+    if item is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Not found")
+    return item
+
+
+def get_points(db, user: User) -> Points:
+    row = db.query(Points).filter(Points.user_id == user.id).first()
+    if row is None:
+        row = Points(user_id=user.id, current_points=0, lifetime_points=0)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return row
 
 
 @app.post("/add-habit")
@@ -57,15 +95,21 @@ def create_habit(
     name: str = Form(...),
     type: str = Form(...),
     point_value: int = Form(1),
+    user: User = Depends(get_current_user),
 ):
     db = SessionLocal()
+    if type not in VALID_HABIT_TYPES:
+        db.close()
+        return RedirectResponse(url="/", status_code=303)
+
+    point_value = max(1, point_value)
     if type == "virtue":
-        if active_virtue_count(db) >= MAX_ACTIVE_VIRTUES:
+        if active_virtue_count(db, user) >= MAX_ACTIVE_VIRTUES:
             db.close()
             return RedirectResponse(url="/", status_code=303)
         point_value = clamp_virtue_points(point_value)
 
-    new_habit = Habit(name=name, type=type, point_value=point_value)
+    new_habit = Habit(user_id=user.id, name=name, type=type, point_value=point_value)
     db.add(new_habit)
     db.commit()
     db.close()
@@ -73,9 +117,16 @@ def create_habit(
 
 
 @app.get("/")
-def show_checklist(request: Request, edit_id: Optional[int] = None, add_type: Optional[str] = None):
+def show_checklist(
+    request: Request,
+    edit_id: Optional[int] = None,
+    add_type: Optional[str] = None,
+    user: User = Depends(get_current_user),
+):
     db = SessionLocal()
-    habits = db.query(Habit).filter(Habit.active == True).all()
+    points_row = get_points(db, user)
+
+    habits = db.query(Habit).filter(Habit.user_id == user.id, Habit.active == True).all()
 
     today = eastern_today()
     checklist = []
@@ -89,9 +140,7 @@ def show_checklist(request: Request, edit_id: Optional[int] = None, add_type: Op
 
     editing_habit = None
     if edit_id is not None:
-        editing_habit = db.query(Habit).filter(Habit.id == edit_id).first()
-
-    points_row = db.query(Points).first()
+        editing_habit = db.query(Habit).filter(Habit.id == edit_id, Habit.user_id == user.id).first()
 
     db.close()
     return templates.TemplateResponse(
@@ -101,15 +150,16 @@ def show_checklist(request: Request, edit_id: Optional[int] = None, add_type: Op
             "editing_habit": editing_habit,
             "add_type": add_type,
             "points": points_row,
+            "user": user,
             "today": today.strftime("%A, %B %-d"),
         }
     )
 
 
 @app.get("/delete-habit/{habit_id}")
-def delete_habit(habit_id: int):
+def delete_habit(habit_id: int, user: User = Depends(get_current_user)):
     db = SessionLocal()
-    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    habit = get_owned(db, Habit, habit_id, user)
     habit.active = False
     db.commit()
     db.close()
@@ -122,13 +172,19 @@ def edit_habit(
     name: str = Form(...),
     type: str = Form(...),
     point_value: int = Form(1),
+    user: User = Depends(get_current_user),
 ):
     db = SessionLocal()
-    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    habit = get_owned(db, Habit, habit_id, user)
 
+    if type not in VALID_HABIT_TYPES:
+        db.close()
+        return RedirectResponse(url="/", status_code=303)
+
+    point_value = max(1, point_value)
     if type == "virtue":
         # Don't allow converting a habit into a 4th virtue.
-        if habit.type != "virtue" and active_virtue_count(db) >= MAX_ACTIVE_VIRTUES:
+        if habit.type != "virtue" and active_virtue_count(db, user) >= MAX_ACTIVE_VIRTUES:
             db.close()
             return RedirectResponse(url="/", status_code=303)
         point_value = clamp_virtue_points(point_value)
@@ -140,23 +196,28 @@ def edit_habit(
     db.close()
     return RedirectResponse(url="/", status_code=303)
 
+
 @app.post("/add-reward")
 def create_reward(
     name: str = Form(...),
     description: str = Form(""),
     point_cost: int = Form(...),
+    user: User = Depends(get_current_user),
 ):
     db = SessionLocal()
-    new_reward  = Reward(name=name, description=description, point_cost=point_cost)
+    new_reward = Reward(
+        user_id=user.id, name=name, description=description, point_cost=max(1, point_cost)
+    )
     db.add(new_reward)
     db.commit()
     db.close()
     return RedirectResponse(url="/rewards", status_code=303)
 
+
 @app.get("/delete-reward/{reward_id}")
-def delete_reward(reward_id: int):
+def delete_reward(reward_id: int, user: User = Depends(get_current_user)):
     db = SessionLocal()
-    reward = db.query(Reward).filter(Reward.id == reward_id).first()
+    reward = get_owned(db, Reward, reward_id, user)
     reward.active = False
     db.commit()
     db.close()
@@ -169,34 +230,54 @@ def edit_reward(
     name: str = Form(...),
     description: str = Form(""),
     point_cost: int = Form(...),
+    user: User = Depends(get_current_user),
 ):
     db = SessionLocal()
-    reward = db.query(Reward).filter(Reward.id == reward_id).first()
+    reward = get_owned(db, Reward, reward_id, user)
     reward.name = name
     reward.description = description
-    reward.point_cost = point_cost
+    reward.point_cost = max(1, point_cost)
     db.commit()
     db.close()
     return RedirectResponse(url="/rewards", status_code=303)
 
+
 @app.get("/rewards")
-def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_reward_id: Optional[int] = None):
+def show_rewards(
+    request: Request,
+    add_reward: Optional[bool] = None,
+    edit_reward_id: Optional[int] = None,
+    user: User = Depends(get_current_user),
+):
     db = SessionLocal()
-    rewards = db.query(Reward).filter(Reward.active == True).order_by(Reward.point_cost.asc()).all()
-    points_row = db.query(Points).first()
-    redemptions = db.query(Redemption).order_by(Redemption.redeemed_at.desc()).limit(30).all()
+    points_row = get_points(db, user)
+
+    rewards = (
+        db.query(Reward)
+        .filter(Reward.user_id == user.id, Reward.active == True)
+        .order_by(Reward.point_cost.asc())
+        .all()
+    )
+    redemptions = (
+        db.query(Redemption)
+        .filter(Redemption.user_id == user.id)
+        .order_by(Redemption.redeemed_at.desc())
+        .limit(30)
+        .all()
+    )
     gamble_rows = (
         db.query(PointTransaction)
-        .filter(PointTransaction.type == "gamble")
+        .filter(PointTransaction.user_id == user.id, PointTransaction.type == "gamble")
         .order_by(PointTransaction.created_at.desc())
         .limit(5)
         .all()
     )
     gambles = []
     for g in gamble_rows:
-        # Everything that changed your points after this gamble
+        # Everything that changed this user's points after this gamble
         newer = db.query(func.coalesce(func.sum(PointTransaction.amount), 0)).filter(
-            PointTransaction.created_at > g.created_at
+            PointTransaction.user_id == user.id,
+            PointTransaction.created_at > g.created_at,
         ).scalar()
         gambles.append({
             "amount": g.amount,
@@ -205,7 +286,9 @@ def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_rewar
 
     editing_reward = None
     if edit_reward_id is not None:
-        editing_reward = db.query(Reward).filter(Reward.id == edit_reward_id).first()
+        editing_reward = db.query(Reward).filter(
+            Reward.id == edit_reward_id, Reward.user_id == user.id
+        ).first()
 
     db.close()
     return templates.TemplateResponse(
@@ -217,41 +300,16 @@ def show_rewards(request: Request, add_reward: Optional[bool] = None, edit_rewar
             "editing_reward": editing_reward,
             "redemptions": redemptions,
             "gambles": gambles,
+            "user": user,
             "today": eastern_today().strftime("%A, %B %-d"),
         }
     )
 
-@app.post("/redeem/{reward_id}")
-def redeem_reward(reward_id: int):
-    db = SessionLocal()
-    reward = db.query(Reward).filter(Reward.id == reward_id).first()
-    points_row = db.query(Points).first()
-
-    if points_row.current_points >= reward.point_cost:
-        transaction = PointTransaction(
-            amount=-reward.point_cost,
-            type="reward",
-            reason=reward.name,
-        )
-        db.add(transaction)
-        points_row.current_points -= reward.point_cost
-
-        redemption = Redemption(
-            reward_name=reward.name,
-            point_cost=reward.point_cost,
-            completed=False,
-        )
-        db.add(redemption)
-
-    db.commit()
-    db.close()
-    return RedirectResponse(url="/rewards", status_code=303)
-
 
 @app.get("/toggle-redemption/{redemption_id}")
-def toggle_redemption(redemption_id: int):
+def toggle_redemption(redemption_id: int, user: User = Depends(get_current_user)):
     db = SessionLocal()
-    redemption = db.query(Redemption).filter(Redemption.id == redemption_id).first()
+    redemption = get_owned(db, Redemption, redemption_id, user)
     redemption.completed = not redemption.completed
     if not redemption.completed:
         redemption.completion_announced = False
@@ -259,16 +317,17 @@ def toggle_redemption(redemption_id: int):
     db.close()
     return RedirectResponse(url="/rewards", status_code=303)
 
+
 @app.post("/toggle-checkin")
-async def toggle_checkin(request: Request):
+async def toggle_checkin(request: Request, user: User = Depends(get_current_user)):
     data = await request.json()
     habit_id = data.get("habit_id")
     was_checked = data.get("checked")
 
     db = SessionLocal()
-    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    habit = get_owned(db, Habit, habit_id, user)
     today = eastern_today()
-    points_row = db.query(Points).first()
+    points_row = get_points(db, user)
 
     checkin = db.query(DailyCheckin).filter(
         DailyCheckin.habit_id == habit.id,
@@ -285,6 +344,7 @@ async def toggle_checkin(request: Request):
     if habit.type == "bad":
         if was_checked and not checkin.point_awarded:
             transaction = PointTransaction(
+                user_id=user.id,
                 amount=habit.point_value,
                 type="failure",
                 reason=f"Did {habit.name}",
@@ -337,6 +397,7 @@ async def toggle_checkin(request: Request):
             deducted = min(habit.point_value, max(points_row.current_points, 0))
             if deducted > 0:
                 transaction = PointTransaction(
+                    user_id=user.id,
                     amount=-deducted,
                     type="virtue",
                     reason=f"Virtue: {habit.name}",
@@ -367,9 +428,58 @@ async def toggle_checkin(request: Request):
 
     return JSONResponse({"current_points": current, "lifetime_points": lifetime})
 
+@app.get("/friends")
+def show_friends(request: Request, user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    today = eastern_today()
+
+    rows = db.query(User, Points).outerjoin(Points, Points.user_id == User.id).all()
+
+    habits = db.query(Habit).filter(Habit.active == True).order_by(Habit.id).all()
+    checked_ids = {
+        c.habit_id
+        for c in db.query(DailyCheckin).filter(
+            DailyCheckin.date == today, DailyCheckin.completed == True
+        ).all()
+    }
+    habits_by_user = {}
+    for h in habits:
+        groups = habits_by_user.setdefault(h.user_id, {"good": [], "bad": [], "virtue": []})
+        if h.type in groups:
+            groups[h.type].append({
+                "name": h.name,
+                "points": h.point_value,
+                "checked": h.id in checked_ids,
+            })
+
+    friends = [
+        {
+            "name": u.username,
+            "current": p.current_points if p else 0,
+            "lifetime": p.lifetime_points if p else 0,
+            "is_me": u.id == user.id,
+            "habits": habits_by_user.get(u.id, {"good": [], "bad": [], "virtue": []}),
+        }
+        for u, p in rows
+    ]
+    db.close()
+
+    # Fewest points first, since fewer is better
+    friends.sort(key=lambda f: (f["current"], f["lifetime"], f["name"].lower()))
+
+    return templates.TemplateResponse(
+        request=request, name="friends.html",
+        context={
+            "friends": friends,
+            "user": user,
+            "today": eastern_today().strftime("%A, %B %-d"),
+        }
+    )
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(

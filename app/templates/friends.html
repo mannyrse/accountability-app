@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    {% macro habit_rows(items, kind) %}
+    {% for h in items %}
+    <div class="row friend-habit{% if kind != 'good' %} {{ kind }}{% endif %}">
+        <span class="status-dot{% if h.checked %} on{% endif %}"></span>
+        <span class="name">{{ h.name }}</span>
+        {% if kind == "virtue" %}
+        <span class="tag">−{{ h.points }} pt{% if h.points != 1 %}s{% endif %}</span>
+        {% elif kind == "good" %}
+        <span class="tag{% if not h.checked %} at-risk{% endif %}">{{ h.points }} pt{% if h.points != 1 %}s{% endif %}{%
+            if not h.checked %} at risk{% endif %}</span>
+        {% else %}
+        <span class="tag">{{ h.points }} pt{% if h.points != 1 %}s{% endif %} at risk</span>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endmacro %}
+
+    <div class="app">
+        <p class="greeting">Hello, {{ user.username }}</p>
+        <p class="today-date">{{ today }}</p>
+        <div class="tabs">
+            <a href="/">Today</a>
+            <a href="/rewards">Rewards</a>
+            <a href="/friends" class="active">Friends</a>
+        </div>
+
+        <h2>Friends</h2>
+        <p class="empty-state">Fewest points first. Fewer is better. Tap a name to see their habits.</p>
+
+        <div class="list">
+            {% for f in friends %}
+            <details class="friend-card">
+                <summary class="row friend{% if f.is_me %} me{% endif %}">
+                    <span class="friend-rank">{{ loop.index }}</span>
+                    <span class="name">{{ f.name }}{% if f.is_me %}<span class="you-tag">You</span>{% endif %}</span>
+                    <span class="friend-points">
+                        <span class="friend-current">{{ f.current }}</span>
+                        <span class="friend-lifetime">{{ f.lifetime }} lifetime</span>
+                    </span>
+                </summary>
+
+                <div class="friend-habits">
+                    {% if not (f.habits.good or f.habits.bad or f.habits.virtue) %}
+                    <p class="friend-empty">No habits yet.</p>
+                    {% endif %}
+
+                    {% if f.habits.good %}
+                    <div class="friend-group-title">Good habits</div>
+                    {{ habit_rows(f.habits.good, "good") }}
+                    {% endif %}
+
+                    {% if f.habits.bad %}
+                    <div class="friend-group-title">Bad habits</div>
+                    {{ habit_rows(f.habits.bad, "bad") }}
+                    {% endif %}
+
+                    {% if f.habits.virtue %}
+                    <div class="friend-group-title">Virtues</div>
+                    {{ habit_rows(f.habits.virtue, "virtue") }}
+                    {% endif %}
+                </div>
+            </details>
+            {% endfor %}
+        </div>
+
+        <p class="empty-state friends-footer">Logged in as {{ user.username }}</p>
+        <a class="cancel-link" href="/logout">Log out</a>
+    </div>
+</body>
+
+</html>

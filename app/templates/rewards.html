@@ -13,10 +13,12 @@
 
 <body>
     <div class="app">
+        <p class="greeting">Hello, {{ user.username }}</p>
         <p class="today-date">{{ today }}</p>
         <div class="tabs">
             <a href="/">Today</a>
             <a href="/rewards" class="active">Rewards</a>
+            <a href="/friends">Friends</a>
         </div>
 
         <h2 class="points-heading">Points</h2>
@@ -69,10 +71,6 @@
                     <a href="/rewards?edit_reward_id={{ reward.id }}">Edit</a>
                     <a href="/delete-reward/{{ reward.id }}">Delete</a>
                 </div>
-                <form method="post" action="/redeem/{{ reward.id }}">
-                    <button class="redeem-btn" type="submit" {% if points.current_points < reward.point_cost
-                        %}disabled{% endif %}>Redeem</button>
-                </form>
             </div>
         </div>
         {% endfor %}

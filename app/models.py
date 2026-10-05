@@ -10,6 +10,7 @@ class Habit(Base):
     type = Column(Text, nullable=False)
     point_value = Column(Integer, nullable=False, default=1)
     active = Column(Boolean, nullable=False, default=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 
 class DailyCheckin(Base):
@@ -30,7 +31,7 @@ class Points(Base):
     current_points = Column(Integer, nullable=False, default=0)
     lifetime_points = Column(Integer, nullable=False, default=0)
     last_rollover_date = Column(Date, nullable=True)
-
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
 
 class PointTransaction(Base):
     __tablename__ = "point_transactions"
@@ -40,6 +41,7 @@ class PointTransaction(Base):
     type = Column(Text, nullable=False)
     reason = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 
 class Reward(Base):
@@ -50,6 +52,7 @@ class Reward(Base):
     description = Column(Text, nullable=True)
     point_cost = Column(Integer, nullable=False)
     active = Column(Boolean, nullable=False, default=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 class PendingNotification(Base):
     __tablename__ = "pending_notifications"
@@ -78,3 +81,13 @@ class Redemption(Base):
     completed = Column(Boolean, nullable=False, default=False)
     completion_announced = Column(Boolean, nullable=False, default=False)
     redeemed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    redeemed_by_discord_id = Column(Text, nullable=True)
+    redeemed_by_name = Column(Text, nullable=True)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    discord_id = Column(Text, nullable=False, unique=True)
+    username = Column(Text, nullable=False)
