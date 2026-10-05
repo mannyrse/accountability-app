@@ -102,6 +102,7 @@ async def auth_callback(
 
     discord_id = str(me["id"])
     display_name = me.get("global_name") or me["username"]
+    avatar_hash = me.get("avatar")
 
     if discord_id not in ALLOWED_IDS:
         return RedirectResponse("/login?error=This+account+isn%27t+on+the+list.", status_code=303)
@@ -110,11 +111,12 @@ async def auth_callback(
     try:
         user = db.query(User).filter(User.discord_id == discord_id).first()
         if user is None:
-            user = User(discord_id=discord_id, username=display_name)
+            user = User(discord_id=discord_id, username=display_name, avatar=avatar_hash)
             db.add(user)
             db.flush()
         else:
             user.username = display_name
+            user.avatar = avatar_hash
 
         if db.query(Points).filter(Points.user_id == user.id).first() is None:
             db.add(Points(user_id=user.id, current_points=0, lifetime_points=0))

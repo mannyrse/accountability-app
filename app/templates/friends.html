@@ -30,7 +30,10 @@
     {% endmacro %}
 
     <div class="app">
-        <p class="greeting">Hello, {{ user.username }}</p>
+        <p class="greeting">
+            <img class="avatar avatar-sm" src="{{ avatar_url(user.discord_id, user.avatar) }}" alt="">
+            <span>Hello, {{ user.username }}</span>
+        </p>
         <p class="today-date">{{ today }}</p>
         <div class="tabs">
             <a href="/">Today</a>
@@ -46,6 +49,7 @@
             <details class="friend-card">
                 <summary class="row friend{% if f.is_me %} me{% endif %}">
                     <span class="friend-rank">{{ loop.index }}</span>
+                    <img class="avatar" src="{{ f.avatar }}" alt="">
                     <span class="name">{{ f.name }}{% if f.is_me %}<span class="you-tag">You</span>{% endif %}</span>
                     <span class="friend-points">
                         <span class="friend-current">{{ f.current }}</span>

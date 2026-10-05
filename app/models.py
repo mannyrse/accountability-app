@@ -91,3 +91,4 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     discord_id = Column(Text, nullable=False, unique=True)
     username = Column(Text, nullable=False)
+    avatar = Column(Text, nullable=True)

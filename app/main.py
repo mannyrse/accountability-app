@@ -53,6 +53,14 @@ def to_eastern(dt):
 
 
 templates.env.filters["eastern"] = to_eastern
+def avatar_url(discord_id: str, avatar_hash: Optional[str]) -> str:
+    if avatar_hash:
+        return f"https://cdn.discordapp.com/avatars/{discord_id}/{avatar_hash}.png?size=64"
+    # No custom avatar: Discord's default one, picked by account ID
+    return f"https://cdn.discordapp.com/embed/avatars/{(int(discord_id) >> 22) % 6}.png"
+
+
+templates.env.globals["avatar_url"] = avatar_url
 
 
 # Helpers
@@ -455,6 +463,7 @@ def show_friends(request: Request, user: User = Depends(get_current_user)):
     friends = [
         {
             "name": u.username,
+            "avatar": avatar_url(u.discord_id, u.avatar),
             "current": p.current_points if p else 0,
             "lifetime": p.lifetime_points if p else 0,
             "is_me": u.id == user.id,

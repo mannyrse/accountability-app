@@ -15,7 +15,10 @@
     {% set virtue_count = checklist | selectattr("habit.type", "equalto", "virtue") | list | length %}
 
     <div class="app">
-        <p class="greeting">Hello, {{ user.username }}</p>
+        <p class="greeting">
+            <img class="avatar avatar-sm" src="{{ avatar_url(user.discord_id, user.avatar) }}" alt="">
+            <span>Hello, {{ user.username }}</span>
+        </p>
         <p class="today-date">{{ today }}</p>
 
         <div class="tabs">
