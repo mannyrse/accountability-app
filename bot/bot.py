@@ -438,6 +438,44 @@ async def check_completed_redemptions():
         db.close()
 
 
+@tasks.loop(seconds=30)
+async def check_redeem_announcements():
+    db = SessionLocal()
+    try:
+        due = (
+            db.query(Redemption)
+            .filter(Redemption.redeem_announced == False)
+            .order_by(Redemption.redeemed_at.asc())
+            .all()
+        )
+        if not due:
+            return
+
+        channel = bot.get_channel(int(os.getenv("DISCORD_CHANNEL_ID")))
+        if channel is None:
+            return
+
+        for r in due:
+            owner = db.query(User).filter(User.id == r.user_id).first()
+            if owner is None:
+                r.redeem_announced = True
+                db.commit()
+                continue
+            points_row = db.query(Points).filter(Points.user_id == owner.id).first()
+            balance = points_row.current_points if points_row else 0
+            by = r.redeemed_by_name or "Someone"
+            await channel.send(
+                f"🎯 **{by}** redeemed **{r.reward_name}** from <@{owner.discord_id}> "
+                f"for {r.point_cost} points!\n{owner.username} now has {balance} points."
+            )
+            r.redeem_announced = True
+            db.commit()
+    except Exception as e:
+        print(f"REDEEM ANNOUNCE ERROR: {type(e).__name__}: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
@@ -447,7 +485,8 @@ async def on_ready():
         check_daily_reports.start()
     if not check_completed_redemptions.is_running():
         check_completed_redemptions.start()
-
+    if not check_redeem_announcements.is_running():
+        check_redeem_announcements.start()
 
 @bot.event
 async def on_connect():

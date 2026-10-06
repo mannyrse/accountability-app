@@ -84,6 +84,7 @@ class Redemption(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     redeemed_by_discord_id = Column(Text, nullable=True)
     redeemed_by_name = Column(Text, nullable=True)
+    redeem_announced = Column(Boolean, nullable=False, default=True)
 
 class User(Base):
     __tablename__ = "users"

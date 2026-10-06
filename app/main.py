@@ -19,6 +19,7 @@ import pytz
 from fastapi.responses import JSONResponse
 from app.timezone_utils import eastern_today
 from sqlalchemy import func
+from urllib.parse import quote
 
 
 @asynccontextmanager
@@ -259,6 +260,10 @@ def show_rewards(
 ):
     db = SessionLocal()
     points_row = get_points(db, user)
+    shops = [
+        {"id": u.id, "name": u.username, "avatar": avatar_url(u.discord_id, u.avatar)}
+        for u in db.query(User).filter(User.id != user.id).order_by(User.username).all()
+    ]
 
     rewards = (
         db.query(Reward)
@@ -484,6 +489,111 @@ def show_friends(request: Request, user: User = Depends(get_current_user)):
             "today": eastern_today().strftime("%A, %B %-d"),
         }
     )
+
+@app.get("/shop/{owner_id}")
+def show_shop(
+    request: Request,
+    owner_id: int,
+    redeemed: Optional[str] = None,
+    error: Optional[str] = None,
+    user: User = Depends(get_current_user),
+):
+    if owner_id == user.id:
+        return RedirectResponse(url="/rewards", status_code=303)
+
+    db = SessionLocal()
+    owner = db.query(User).filter(User.id == owner_id).first()
+    if owner is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Not found")
+
+    points_row = db.query(Points).filter(Points.user_id == owner.id).first()
+    owner_points = points_row.current_points if points_row else 0
+
+    rewards = [
+        {"id": r.id, "name": r.name, "description": r.description, "cost": r.point_cost}
+        for r in db.query(Reward)
+        .filter(Reward.user_id == owner.id, Reward.active == True)
+        .order_by(Reward.point_cost.asc())
+        .all()
+    ]
+    shops = [
+        {"id": u.id, "name": u.username, "avatar": avatar_url(u.discord_id, u.avatar)}
+        for u in db.query(User).filter(User.id != user.id).order_by(User.username).all()
+    ]
+    owner_info = {
+        "id": owner.id,
+        "name": owner.username,
+        "avatar": avatar_url(owner.discord_id, owner.avatar),
+        "points": owner_points,
+    }
+    db.close()
+
+    return templates.TemplateResponse(
+        request=request, name="shop.html",
+        context={
+            "owner": owner_info,
+            "rewards": rewards,
+            "shops": shops,
+            "redeemed": redeemed,
+            "error": error,
+            "user": user,
+            "today": eastern_today().strftime("%A, %B %-d"),
+        },
+    )
+
+
+@app.post("/shop/{owner_id}/redeem/{reward_id}")
+def redeem_from_friend(owner_id: int, reward_id: int, user: User = Depends(get_current_user)):
+    if owner_id == user.id:
+        return RedirectResponse(url="/rewards", status_code=303)
+
+    db = SessionLocal()
+    owner = db.query(User).filter(User.id == owner_id).first()
+    if owner is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Not found")
+
+    reward = db.query(Reward).filter(
+        Reward.id == reward_id, Reward.user_id == owner.id, Reward.active == True
+    ).first()
+    if reward is None:
+        db.close()
+        return RedirectResponse(
+            url=f"/shop/{owner_id}?error={quote('That reward is no longer available.')}",
+            status_code=303,
+        )
+
+    points_row = get_points(db, owner)
+    if points_row.current_points < reward.point_cost:
+        message = f"{owner.username} only has {points_row.current_points} points, but {reward.name} costs {reward.point_cost}."
+        db.close()
+        return RedirectResponse(url=f"/shop/{owner_id}?error={quote(message)}", status_code=303)
+
+    reward_name = reward.name
+    cost = reward.point_cost
+
+    db.add(PointTransaction(
+        user_id=owner.id,
+        amount=-cost,
+        type="reward",
+        reason=f"{reward_name} (redeemed by {user.username})",
+    ))
+    points_row.current_points -= cost
+
+    db.add(Redemption(
+        user_id=owner.id,
+        reward_name=reward_name,
+        point_cost=cost,
+        completed=False,
+        redeemed_by_discord_id=user.discord_id,
+        redeemed_by_name=user.username,
+        redeem_announced=False,
+    ))
+    db.commit()
+    db.close()
+
+    return RedirectResponse(url=f"/shop/{owner_id}?redeemed={quote(reward_name)}", status_code=303)
 
 @app.get("/health")
 def health_check():

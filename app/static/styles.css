@@ -831,3 +831,87 @@ details.friend-card[open]>summary::after {
     font-size: 0.6rem;
     font-weight: 700;
 }
+
+/* Shop switcher and friend shops */
+.shop-switch {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    margin: 0 0 6px;
+    padding-bottom: 4px;
+}
+
+.shop-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.shop-pill.active {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--card);
+}
+
+@media (hover: hover) {
+    .shop-pill:not(.active):hover {
+        color: var(--text);
+        border-color: var(--muted);
+    }
+}
+
+.avatar-xs {
+    width: 18px;
+    height: 18px;
+}
+
+.shop-owner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0;
+}
+
+.shop-owner .avatar {
+    width: 44px;
+    height: 44px;
+}
+
+.shop-owner-name {
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.shop-owner-points {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.notice {
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+}
+
+.notice.ok {
+    background: var(--good-tint);
+    color: var(--good);
+}
+
+.notice.error {
+    background: var(--bad-tint);
+    color: var(--bad);
+}

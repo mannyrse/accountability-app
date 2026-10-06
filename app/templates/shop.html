@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ owner.name }}'s shop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <div class="app">
+        <p class="today-date">{{ today }}</p>
+        <div class="tabs">
+            <a href="/">Today</a>
+            <a href="/rewards" class="active">Rewards</a>
+            <a href="/friends">Friends</a>
+        </div>
+
+        <div class="shop-switch">
+            <a class="shop-pill" href="/rewards">My shop</a>
+            {% for s in shops %}
+            <a class="shop-pill{% if s.id == owner.id %} active{% endif %}" href="/shop/{{ s.id }}"><img
+                    class="avatar avatar-xs" src="{{ s.avatar }}" alt="">{{ s.name }}</a>
+            {% endfor %}
+        </div>
+
+        <div class="shop-owner">
+            <img class="avatar" src="{{ owner.avatar }}" alt="">
+            <div>
+                <div class="shop-owner-name">{{ owner.name }}'s shop</div>
+                <div class="shop-owner-points">{{ owner.points }} points to spend</div>
+            </div>
+        </div>
+
+        {% if redeemed %}
+        <p class="notice ok">Redeemed {{ redeemed }} from {{ owner.name }}. It's announced in Discord.</p>
+        {% endif %}
+        {% if error %}
+        <p class="notice error">{{ error }}</p>
+        {% endif %}
+
+        <p class="empty-state">Redeeming spends {{ owner.name }}'s points, and they owe you the reward.</p>
+
+        {% for r in rewards %}
+        <div class="reward-card">
+            <div class="reward-top">
+                <div>
+                    <div class="reward-name">{{ r.name }}</div>
+                    {% if r.description %}<div class="reward-desc">{{ r.description }}</div>{% endif %}
+                </div>
+                <div class="reward-cost">{{ r.cost }} pts</div>
+            </div>
+            <div class="reward-bottom">
+                <span></span>
+                <form method="post" action="/shop/{{ owner.id }}/redeem/{{ r.id }}">
+                    <button class="redeem-btn" type="submit" {% if owner.points < r.cost %}disabled{% endif
+                        %}>Redeem</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <p class="empty-state">{{ owner.name }} has no rewards yet.</p>
+        {% endfor %}
+    </div>
+</body>
+
+</html>

@@ -23,6 +23,15 @@
             <a href="/rewards" class="active">Rewards</a>
             <a href="/friends">Friends</a>
         </div>
+        {% if shops %}
+        <div class="shop-switch">
+            <a class="shop-pill active" href="/rewards">My shop</a>
+            {% for s in shops %}
+            <a class="shop-pill" href="/shop/{{ s.id }}"><img class="avatar avatar-xs" src="{{ s.avatar }}" alt="">{{
+                s.name }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         <h2 class="points-heading">Points</h2>
         <div class="balance-card">
@@ -65,7 +74,9 @@
             <div class="reward-top">
                 <div>
                     <div class="reward-name">{{ reward.name }}</div>
-                    {% if reward.description %}<div class="reward-desc">{{ reward.description }}</div>{% endif %}
+                    {% if reward.description %}<div class="reward-desc">{{ (r.redeemed_at | eastern).strftime('%b %d,
+                        %I:%M %p') }}{% if r.redeemed_by_name %} · by {{ r.redeemed_by_name }}{% endif %}</div>{% endif
+                    %}
                 </div>
                 <div class="reward-cost">{{ reward.point_cost }} pts</div>
             </div>
