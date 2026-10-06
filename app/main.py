@@ -312,6 +312,7 @@ def show_rewards(
             "add_reward": add_reward,
             "editing_reward": editing_reward,
             "redemptions": redemptions,
+            "shops": shops,
             "gambles": gambles,
             "user": user,
             "today": eastern_today().strftime("%A, %B %-d"),
