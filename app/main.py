@@ -134,6 +134,9 @@ def show_checklist(
 ):
     db = SessionLocal()
     points_row = get_points(db, user)
+    owed = db.query(Redemption).filter(
+        Redemption.user_id == user.id, Redemption.completed == False
+    ).count()
 
     habits = db.query(Habit).filter(Habit.user_id == user.id, Habit.active == True).all()
 
@@ -158,6 +161,7 @@ def show_checklist(
             "checklist": checklist,
             "editing_habit": editing_habit,
             "add_type": add_type,
+            "owed": owed,
             "points": points_row,
             "user": user,
             "today": today.strftime("%A, %B %-d"),

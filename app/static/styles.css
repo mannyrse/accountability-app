@@ -915,3 +915,23 @@ details.friend-card[open]>summary::after {
     background: var(--bad-tint);
     color: var(--bad);
 }
+
+/* Owed rewards banner */
+.owed-banner {
+    display: block;
+    background: var(--bad-tint);
+    color: var(--bad);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    margin: -8px 0 16px;
+    transition: opacity 0.18s ease;
+}
+
+@media (hover: hover) {
+    .owed-banner:hover {
+        opacity: 0.75;
+    }
+}

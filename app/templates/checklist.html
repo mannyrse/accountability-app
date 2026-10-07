@@ -38,7 +38,12 @@
                 <div class="balance-label">LIFETIME</div>
             </div>
         </div>
-
+        {% if owed %}
+        <a class="owed-banner" href="/rewards">
+            You owe {{ owed }} reward{% if owed != 1 %}s{% endif %}. Tap to see {% if owed != 1 %}them{% else %}it{%
+            endif %}.
+        </a>
+        {% endif %}
         {% if editing_habit %}
         <h2>Editing habit</h2>
         <form class="inline-form" method="post" action="/edit-habit/{{ editing_habit.id }}">
