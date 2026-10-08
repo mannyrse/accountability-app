@@ -65,6 +65,22 @@
         {% else %}
         <p class="empty-state">{{ owner.name }} has no rewards yet.</p>
         {% endfor %}
+
+        <h2>Redeemed</h2>
+        {% for o in owed %}
+        <div class="reward-card">
+            <div class="reward-top">
+                <div>
+                    <div class="reward-name">{{ o.name }}</div>
+                    <div class="reward-desc">Redeemed by {{ o.by }} · {{ o.when }}</div>
+                </div>
+                <div class="reward-cost">{{ o.cost }} pts</div>
+            </div>
+        </div>
+        {% else %}
+        <p class="empty-state">Nothing has been redeemed yet. Spend {{ owner.name }}'s points on a reward above and
+            they'll owe it to you.</p>
+        {% endfor %}
     </div>
 </body>
 

@@ -522,6 +522,18 @@ def show_shop(
         .order_by(Reward.point_cost.asc())
         .all()
     ]
+    owed = [
+        {
+            "name": r.reward_name,
+            "cost": r.point_cost,
+            "by": r.redeemed_by_name or "Someone",
+            "when": to_eastern(r.redeemed_at).strftime("%b %d, %I:%M %p"),
+        }
+        for r in db.query(Redemption)
+        .filter(Redemption.user_id == owner.id, Redemption.completed == False)
+        .order_by(Redemption.redeemed_at.desc())
+        .all()
+    ]
     shops = [
         {"id": u.id, "name": u.username, "avatar": avatar_url(u.discord_id, u.avatar)}
         for u in db.query(User).filter(User.id != user.id).order_by(User.username).all()
@@ -538,6 +550,7 @@ def show_shop(
         request=request, name="shop.html",
         context={
             "owner": owner_info,
+            "owed": owed,
             "rewards": rewards,
             "shops": shops,
             "redeemed": redeemed,
