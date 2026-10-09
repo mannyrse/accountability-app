@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/confirm.js" defer></script>
 </head>
 
 <body>
@@ -56,7 +57,8 @@
             </div>
             <div class="reward-bottom">
                 <span></span>
-                <form method="post" action="/shop/{{ owner.id }}/redeem/{{ r.id }}">
+                <form method="post" action="/shop/{{ owner.id }}/redeem/{{ r.id }}"
+                    data-confirm="Redeem {{ r.name }} from {{ owner.name }} for {{ r.cost }} pts? They'll owe it to you.">
                     <button class="redeem-btn" type="submit" {% if owner.points < r.cost %}disabled{% endif
                         %}>Redeem</button>
                 </form>
