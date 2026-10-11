@@ -438,7 +438,7 @@ h2 {
     }
 }
 
-.redemption-name.completed {
+.reward-name.completed {
     text-decoration: line-through;
     color: var(--muted);
 }
@@ -473,11 +473,6 @@ h2 {
     .redemption-toggle.completed:hover {
         background: var(--card);
     }
-}
-
-.redemption-name.completed {
-    text-decoration: line-through;
-    color: var(--muted);
 }
 
 details.redeemed-history summary {
