@@ -138,6 +138,8 @@
 
         {% if gambles %}
         <h2>Recent gambles</h2>
+        <p class="gamble-summary">Net {% if gamble_summary.net > 0 %}+{% endif %}{{ gamble_summary.net }} pts · {{
+            gamble_summary.wins }} won · {{ gamble_summary.losses }} lost</p>
         <div class="list">
             {% for g in gambles %}
             <div class="row gamble {% if g.amount > 0 %}win{% else %}loss{% endif %}">

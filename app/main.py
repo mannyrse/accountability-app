@@ -18,7 +18,7 @@ from apscheduler.triggers.cron import CronTrigger
 import pytz
 from fastapi.responses import JSONResponse
 from app.timezone_utils import eastern_today
-from sqlalchemy import func
+from sqlalchemy import func, case
 from urllib.parse import quote
 
 
@@ -300,6 +300,15 @@ def show_rewards(
             "amount": g.amount,
             "balance_after": points_row.current_points - newer,
         })
+    wins, losses, net = db.query(
+        func.coalesce(func.sum(case((PointTransaction.amount > 0, 1), else_=0)), 0),
+        func.coalesce(func.sum(case((PointTransaction.amount < 0, 1), else_=0)), 0),
+        func.coalesce(func.sum(PointTransaction.amount), 0),
+    ).filter(
+        PointTransaction.user_id == user.id,
+        PointTransaction.type == "gamble",
+    ).one()
+    gamble_summary = {"wins": int(wins), "losses": int(losses), "net": int(net)}
 
     editing_reward = None
     if edit_reward_id is not None:
@@ -318,6 +327,7 @@ def show_rewards(
             "redemptions": redemptions,
             "shops": shops,
             "gambles": gambles,
+            "gamble_summary": gamble_summary,
             "user": user,
             "today": eastern_today().strftime("%A, %B %-d"),
         }

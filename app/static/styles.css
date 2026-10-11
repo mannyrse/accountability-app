@@ -505,6 +505,13 @@ details.redeemed-history[open] summary::before {
 
 
 /* Rewards page: recent gambles */
+.gamble-summary {
+    margin: -4px 0 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
 .row.gamble .gamble-icon {
     width: 24px;
     height: 24px;
