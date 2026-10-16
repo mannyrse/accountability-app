@@ -11,8 +11,7 @@ from app.rollover import run_daily_rollover
 from apscheduler.schedulers.background import BackgroundScheduler
 from typing import Optional
 from contextlib import asynccontextmanager
-import asyncio
-from bot.bot import bot, TOKEN
+import asyncio, run_bot_forever
 from fastapi.staticfiles import StaticFiles
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -24,9 +23,8 @@ from urllib.parse import quote
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    asyncio.create_task(bot.start(TOKEN))
+    asyncio.create_task(run_bot_forever())
     yield
-
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(

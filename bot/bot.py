@@ -3,6 +3,8 @@ import random
 from typing import Optional
 import time
 import discord
+import asyncio
+import httpx
 from discord import app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -362,6 +364,8 @@ async def redeemed(interaction: discord.Interaction, member: Optional[discord.Us
 
 @tasks.loop(seconds=30)
 async def check_pending_notifications():
+    if discord_blocked():
+        return
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc)
@@ -386,7 +390,7 @@ async def check_pending_notifications():
             db.commit()
     except discord.HTTPException as e:
         note_discord_block(e)
-        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}, pausing 5 minutes")
+        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}")
         db.rollback()
     except Exception as e:
         print(f"NOTIFICATION ERROR: {type(e).__name__}: {e}")
@@ -397,6 +401,8 @@ async def check_pending_notifications():
 
 @tasks.loop(seconds=30)
 async def check_daily_reports():
+    if discord_blocked():
+        return
     db = SessionLocal()
     try:
         due = db.query(DailyReport).filter(DailyReport.status == "pending").all()
@@ -413,7 +419,7 @@ async def check_daily_reports():
             db.commit()
     except discord.HTTPException as e:
         note_discord_block(e)
-        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}, pausing 5 minutes")
+        print(f"DAILY REPORT ERROR: Discord HTTP {e.status}")
         db.rollback()
     except Exception as e:
         print(f"DAILY REPORT ERROR: {type(e).__name__}: {e}")
@@ -424,6 +430,8 @@ async def check_daily_reports():
 
 @tasks.loop(seconds=30)
 async def check_completed_redemptions():
+    if discord_blocked():
+        return
     db = SessionLocal()
     try:
         due = (
@@ -450,7 +458,7 @@ async def check_completed_redemptions():
             db.commit()
     except discord.HTTPException as e:
         note_discord_block(e)
-        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}, pausing 5 minutes")
+        print(f"REDEMPTION NOTIFY ERROR: Discord HTTP {e.status}")
         db.rollback()
     except Exception as e:
         # Without this, one failure would silently stop the loop for good.
@@ -462,6 +470,8 @@ async def check_completed_redemptions():
 
 @tasks.loop(seconds=30)
 async def check_redeem_announcements():
+    if discord_blocked():
+        return
     db = SessionLocal()
     try:
         due = (
@@ -494,13 +504,44 @@ async def check_redeem_announcements():
             db.commit()
     except discord.HTTPException as e:
         note_discord_block(e)
-        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}, pausing 5 minutes")
+        print(f"REDEEM ANNOUNCE ERROR: Discord HTTP {e.status}")
         db.rollback()
     except Exception as e:
         print(f"REDEEM ANNOUNCE ERROR: {type(e).__name__}: {e}")
         db.rollback()
     finally:
         db.close()
+
+
+# ---------- Login with automatic retry ----------
+
+async def discord_reachable() -> bool:
+    # Plain request to a public endpoint, so a blocked IP doesn't leave the bot half-logged-in
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get("https://discord.com/api/v10/gateway")
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+async def run_bot_forever():
+    """Keep trying to log in; wait and retry while Discord/Cloudflare blocks this IP."""
+    delay = 60
+    while True:
+        if await discord_reachable():
+            try:
+                await bot.start(TOKEN)
+                return  # bot.start only returns when the bot shuts down
+            except discord.HTTPException as e:
+                print(f"BOT LOGIN BLOCKED: Discord HTTP {e.status}")
+            except Exception as e:
+                print(f"BOT ERROR: {type(e).__name__}: {e}")
+        else:
+            print(f"Discord is unreachable or blocking this IP. Retrying in {delay}s")
+        await asyncio.sleep(delay)
+        delay = min(delay * 2, 900)  # 1 min, 2, 4... up to 15 min between tries
+
 
 @bot.event
 async def on_ready():
@@ -513,6 +554,7 @@ async def on_ready():
         check_completed_redemptions.start()
     if not check_redeem_announcements.is_running():
         check_redeem_announcements.start()
+
 
 @bot.event
 async def on_connect():
