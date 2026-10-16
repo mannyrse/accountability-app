@@ -1,7 +1,7 @@
 import os
 import random
 from typing import Optional
-
+import time
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -25,6 +25,16 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 NOT_REGISTERED = "You haven't set up your account yet. Log in on the website first, then try again."
 SELF_BLOCK = "You can't use this on yourself. It's for other people to use on your points."
 
+_discord_blocked_until = 0.0
+
+def discord_blocked() -> bool:
+    return time.monotonic() < _discord_blocked_until
+
+def note_discord_block(e: discord.HTTPException):
+    """Pause the background loops for 5 minutes when Discord or Cloudflare blocks us."""
+    global _discord_blocked_until
+    if e.status in (429, 403):
+        _discord_blocked_until = time.monotonic() + 300
 
 # ---------- Helpers ----------
 
@@ -374,6 +384,10 @@ async def check_pending_notifications():
             await channel.send(f"🚨 {who} Bad habit alert: **{name}** was checked off.")
             notification.status = "sent"
             db.commit()
+    except discord.HTTPException as e:
+        note_discord_block(e)
+        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}, pausing 5 minutes")
+        db.rollback()
     except Exception as e:
         print(f"NOTIFICATION ERROR: {type(e).__name__}: {e}")
         db.rollback()
@@ -397,6 +411,10 @@ async def check_daily_reports():
             await channel.send(report.message)
             report.status = "sent"
             db.commit()
+    except discord.HTTPException as e:
+        note_discord_block(e)
+        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}, pausing 5 minutes")
+        db.rollback()
     except Exception as e:
         print(f"DAILY REPORT ERROR: {type(e).__name__}: {e}")
         db.rollback()
@@ -430,6 +448,10 @@ async def check_completed_redemptions():
             await channel.send(f"✅ {who} completed **{r.reward_name}**{for_whom}!")
             r.completion_announced = True
             db.commit()
+    except discord.HTTPException as e:
+        note_discord_block(e)
+        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}, pausing 5 minutes")
+        db.rollback()
     except Exception as e:
         # Without this, one failure would silently stop the loop for good.
         print(f"REDEMPTION NOTIFY ERROR: {type(e).__name__}: {e}")
@@ -470,6 +492,10 @@ async def check_redeem_announcements():
             )
             r.redeem_announced = True
             db.commit()
+    except discord.HTTPException as e:
+        note_discord_block(e)
+        print(f"NOTIFICATION ERROR: Discord HTTP {e.status}, pausing 5 minutes")
+        db.rollback()
     except Exception as e:
         print(f"REDEEM ANNOUNCE ERROR: {type(e).__name__}: {e}")
         db.rollback()
