@@ -47,10 +47,10 @@ async def not_logged_in_handler(request: Request, exc: NotLoggedIn):
 
 
 def to_eastern(dt):
-    # DB stores naive UTC datetimes; convert to Eastern for display
+    # DB stores naive UTC datetimes; convert to Central for display
     if dt.tzinfo is None:
         dt = pytz.utc.localize(dt)
-    return dt.astimezone(pytz.timezone("America/New_York"))
+    return dt.astimezone(pytz.timezone("America/Chicago"))
 
 
 templates.env.filters["eastern"] = to_eastern
@@ -631,6 +631,6 @@ def health_check():
 scheduler = BackgroundScheduler()
 scheduler.add_job(
     run_daily_rollover,
-    CronTrigger(hour=23, minute=59, timezone=pytz.timezone("America/New_York"))
+    CronTrigger(hour=23, minute=59, timezone=pytz.timezone("America/Chicago"))
 )
 scheduler.start()
