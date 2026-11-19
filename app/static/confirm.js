@@ -12,3 +12,13 @@ document.addEventListener("submit", function (e) {
     var button = form.querySelector("button[type=submit]");
     if (button) button.disabled = true;
 });
+
+// Links with data-confirm (e.g. delete buttons) ask first and only follow if confirmed
+document.addEventListener("click", function (e) {
+    var link = e.target.closest && e.target.closest("a[data-confirm]");
+    if (!link) return;
+
+    if (!window.confirm(link.dataset.confirm)) {
+        e.preventDefault();
+    }
+});
